@@ -14,7 +14,33 @@ This is **SPEDA Mark VI Core**: one agent (Speda), one backend, one desktop clie
 
 That has a consequence worth stating plainly, because it is the mistake this repo invites: **do not re-add a multi-agent feature here.** If a change needs a roster, a dispatch, a worker corps or a peer, it belongs in the full build. What belongs here is anything a single agent can do on its own.
 
-There is no automatic sync between the two repos. A fix that applies to both is hand-carried, and the direction is usually full build → Core, because that is where the shared chat surface is authored. Carrying one is a deliberate act of work, not a merge.
+The sync is automated up to the point where judgement starts, and no further.
+Every push to the full build's `main` runs its `sync-to-core` workflow, which
+replays the new commits onto a branch here, strips the paths listed in
+[`.github/sync-exclude`](.github/sync-exclude), and opens a **pull request**. It
+never pushes to `main` and never merges.
+
+That gate is the whole design. The strip is mechanical — it can remove
+`packages/heartbreaker`, it cannot tell you whether a change to the shared chat
+surface still means anything in a build with one agent. So read the carry PR for
+exactly that: anything assuming a roster, a dispatch, a worker corps or a peer
+belongs in the full build, not here. Close the PR rather than merging it if the
+answer is no; `.github/sync-state` will have moved past those commits either way.
+
+Two files drive it, and both live here because Core owns the definition of what
+Core excludes:
+
+| File | What it is |
+|---|---|
+| [`.github/sync-exclude`](.github/sync-exclude) | The strip list. If you delete the same file out of every carry PR by hand, put it here. |
+| [`.github/sync-state`](.github/sync-state) | How far the carry has reached. Move it by hand to skip a commit or to re-carry one. |
+
+A commit that conflicts stops the replay: the PR carries everything before it and
+names the one that needs hand-carrying. That commit is still a deliberate act of
+work — the automation just stops pretending otherwise.
+
+The direction is one-way, full build → Core, because that is where the shared
+chat surface is authored. Nothing carries back.
 
 If any doc disagrees with the code, the code is right and the doc is wrong — fix the doc as part of whatever change you're making, don't leave it for later.
 
