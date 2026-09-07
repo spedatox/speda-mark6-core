@@ -10,6 +10,7 @@ The client. `Striker` is the codename; what it ships as is **SPEDA Mark VI Core*
 - [Directory structure](#directory-structure)
 - [Dev workflow](#dev-workflow)
 - [Profile system](#profile-system)
+- [Projects](#projects)
 - [Screen lock](#screen-lock)
 - [Surviving a dropped connection](#surviving-a-dropped-connection)
 - [What Core does not have](#what-core-does-not-have)
@@ -49,6 +50,34 @@ From the repo root: `npm run striker:dev`, `:build`, `:typecheck`, `:web:dev`, `
 ## Profile system
 
 `profile/index.ts` hardcodes a single `AppProfile` — Speda, with its accent color and product name — directly in the file, with no environment-variable selection. There is no roster and no switcher by design, and no `brands.ts` map to select from.
+
+---
+
+## Projects
+
+A project is a named workspace owning its own chats, standing instructions and
+knowledge base. `ProjectsView` is both halves — the card grid and one project's
+detail pane — and it REPLACES the chat column rather than floating over it
+(`Layout` holds `projectsAt`), because it is a place you go, not a dialog you
+dismiss; the sidebar stays put so the conversation list is still one click away.
+
+Three things worth knowing before touching this:
+
+- **New chat from the sidebar is always a LOOSE chat**, even while a project is
+  open. `NEW_CHAT` takes an explicit `projectId` and treats its absence as "no
+  project", never as "keep the current one" — inheriting it there is how a
+  workspace's standing instructions end up on an unrelated conversation.
+- **A chat's project is fixed at birth.** `streamChat` sends `projectId` on every
+  turn and the backend reads it only on the one that creates the session, so
+  there is no client-side "move this chat" path and there should not be one.
+- **Project chats stay in the main history list**, badged with a folder glyph
+  rather than hidden. Hiding them is how you lose a conversation.
+
+Core has no roster, so a project with no colour of its own falls back to the one
+theme accent (`ACCENT` at the top of the file) rather than to a per-agent profile.
+That is the only intentional divergence from the full build's copy of this
+component; everything else is the same file. The backend contracts live in
+[IGOR.md](../igor/IGOR.md#projects).
 
 ---
 

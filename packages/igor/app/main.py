@@ -454,12 +454,13 @@ def create_app() -> FastAPI:
     from app.routers import (
         academic, admin, agents, aircraft, automations, browser as browser_router,
         chat, config as config_router, connections, files, health, import_chats,
-        mail, media, memory, navigation, news, outlook, reminders, telegram,
-        trigger, voice, web_watch,
+        mail, media, memory, navigation, news, outlook, projects as projects_router,
+        reminders, telegram, trigger, voice, web_watch,
     )
 
     app.include_router(health.router)
     app.include_router(chat.router)
+    app.include_router(projects_router.router)
     app.include_router(trigger.router)
     app.include_router(agents.router)
     app.include_router(admin.router)

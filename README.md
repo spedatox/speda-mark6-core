@@ -60,6 +60,22 @@ A turn runs **detached** from the HTTP request that started it, so a dropped con
 - Full control over recurring briefings, reminders, and proactive watchers — page-change hooks, keyword hooks, inbound-mail hooks, RSS watches, webhooks — backed by an n8n workflow engine.
 - On-demand loading of additional integrations and skills, so the active prompt only carries what a given task needs.
 
+### Projects
+
+- Named workspaces that group a body of work: each owns its own chats, its own
+  standing instructions, and its own uploaded knowledge base.
+- Project instructions are injected as a system block on every turn of every chat
+  in the project — they shape tone, scope and format, and sit *under* the agent's
+  own operating contract rather than over it.
+- Knowledge files are extracted to text server-side and budgeted by character
+  count; the files that do not fit a turn's budget are still named, so an agent
+  knows the base is larger than what it can see rather than treating a partial
+  view as complete.
+- Scoped to the agent that owns them, exactly like chat history. Core runs one
+  agent, so in practice every project is Speda's — the scoping is carried anyway,
+  because it is the same code the full build relies on and quietly dropping it
+  here is how the two trees stop being mergeable.
+
 ### Files, storage & documents
 
 - Generate downloadable PPTX, DOCX, and PDF files from Markdown, branded and signed.
