@@ -96,19 +96,14 @@ async def voices():
 
 @router.get("/agents")
 async def voice_agents(request: Request):
-    """Every dispatch-target agent's voice config, for Settings → Voices: the
-    profile's own default, the owner's pin (if any), the effective voice
-    actually in use, and the tuning override. Session-scope aliases (warroom)
-    are excluded the same way the model matrix excludes them — they mirror
-    their parent's brain and are not something that should have its own
-    voice."""
+    """The agent's voice config, for Settings → Voices: the profile's own
+    default, the owner's pin (if any), the effective voice actually in use, and
+    the tuning override."""
     from app.core.runtime_state import get_voice_overrides
 
     overrides = get_voice_overrides()
     out = []
     for p in request.app.state.profiles.roster():
-        if not p.dispatch_target:
-            continue
         override = overrides.get(p.agent_id, {})
         out.append({
             "agent_id": p.agent_id,

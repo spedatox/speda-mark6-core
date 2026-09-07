@@ -46,7 +46,7 @@ _MAX_ACTIVE = 8             # concurrent detached turns before new starts are re
 
 
 class _Done:
-    """Sentinel pushed to subscriber queues when a turn ends."""
+    """Sentinel value pushed to subscriber queues when a turn ends."""
 
 
 _DONE = _Done()

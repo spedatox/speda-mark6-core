@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 """
-Surprisal — which observations deserve Orion's attention tonight.
+Surprisal — which observations deserve the nightly audit's attention.
 
-Orion's consolidation pass (prompts/agents/orion/02_audit.md, Pass 6) has a
+The consolidation pass has a
 scaling problem the moment the observation store is more than a few hundred rows:
 reading everything every night is both expensive and useless, because almost
 nothing changed and almost everything is unremarkable. Honcho solves this with
@@ -24,7 +24,7 @@ exactly.
 
 **And we use both tails, not just one.** Honcho takes the top N% by surprisal.
 That finds the novel, but the *dense* end of the same distribution is just as
-actionable and Orion had no way to see it: a cluster of near-identical
+actionable and the audit had no way to see it: a cluster of near-identical
 observations is a merge waiting to happen, and until now his dedup pass could
 only catch exact string matches. One computation, two findings:
 
@@ -85,7 +85,7 @@ async def _load_embedded(
 
     Rows whose embedding never landed are excluded rather than zero-filled: a
     zero vector is equidistant from everything and would read as maximally
-    surprising, which would hand Orion the store's failures instead of its
+    surprising, which would hand the audit the store's failures instead of its
     discoveries.
     """
     size = max(1, min(sample_size, MAX_SAMPLE))
@@ -148,7 +148,7 @@ async def rank_by_surprisal(
     then min-max normalized to [0, 1] so the score reads the same regardless of
     how tightly the store happens to cluster. A fact whose neighbours are all
     distant is one nothing else in memory connects to — either a genuinely new
-    thread worth reasoning about, or something misfiled. Both are Orion's
+    thread worth reasoning about, or something misfiled. Both are the audit's
     business; neither is visible by reading the store in date order.
     """
     rows, matrix = await _load_embedded(db, user_id=user_id, sample_size=sample_size)

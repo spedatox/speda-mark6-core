@@ -7,7 +7,7 @@ One Google access token for the whole process.
 Extracted from mcp/google_rest.py, which is where it used to live and still
 re-exports it. The move is a layering fix rather than a tidy-up: services may
 import from the layers above them and never below, so with the cache sitting in
-`mcp/` any SERVICE that needed a Google call — the Octavius Protocol uploading a
+`mcp/` any SERVICE that needed a Google call — a backup uploading a
 database snapshot to Drive — had to import upwards to get one. The alternative
 was a second token cache, which is worse than it sounds: Google rotates refresh
 tokens, two caches refresh independently, and the loser of that race starts

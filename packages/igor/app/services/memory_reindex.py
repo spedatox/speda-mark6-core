@@ -200,7 +200,7 @@ async def _load_batches(user_id: int) -> list[tuple[str, str]]:
 
 # ── Step 2: seed from the pre-v3 files ────────────────────────────────────────
 
-# `- [2026-07-06, sentinel] wants totals before breakdowns.` and plainer bullets.
+# `- [2026-07-06, speda] wants totals before breakdowns.` and plainer bullets.
 _BULLET = re.compile(r"^\s*[-*]\s+(.*\S)\s*$")
 _STAMP = re.compile(r"^\[(\d{4}-\d{2}-\d{2})(?:,\s*([a-z0-9_+ ]+))?\]\s*(.*)$", re.I)
 
@@ -587,7 +587,7 @@ async def derive_from_history(user_id: int, model: str, request_id: str = "") ->
                 stored, rejections = await record_observations(
                     db,
                     user_id=user_id,
-                    observer="orion",
+                    observer="speda",
                     proposals=proposals,
                     request_id=request_id,
                     origin="reindex",

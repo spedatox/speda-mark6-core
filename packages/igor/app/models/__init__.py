@@ -11,8 +11,6 @@ from app.models.memory_revision import MemoryRevision
 from app.models.message_embedding import MessageEmbedding
 from app.models.observation import Observation
 from app.models.background_job import BackgroundJob
-from app.models.agent import AgentRecord
-from app.models.agent_message import AgentMessage
 from app.models.tool_call import ToolCall
 from app.models.notification import Notification
 from app.models.automation import Automation
@@ -30,7 +28,7 @@ from app.models.place import PlaceSet
 __all__ = [
     "User", "Session", "Message", "Memory", "MemoryFile", "MemoryRevision",
     "MessageEmbedding", "Observation", "BackgroundJob",
-    "AgentRecord", "AgentMessage", "ToolCall", "Notification", "Automation", "AutomationRun",
+    "ToolCall", "Notification", "Automation", "AutomationRun",
     "NewsItem", "NewsWatch", "NewsQuota",
     "HealthSample", "HealthDaily",
     "CourseSlot", "TermConfig", "AttendanceEntry", "Device",

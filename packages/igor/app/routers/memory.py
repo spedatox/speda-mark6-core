@@ -166,7 +166,6 @@ async def get_memory_sources(request: Request, db: AsyncSession = Depends(get_db
             "default": AGENT_SOURCE_DEFAULTS.get(p.agent_id),
         }
         for p in profiles.roster()
-        if p.dispatch_target  # skip session-scope aliases (warroom)
     ]
     return {"files": files, "agents": agents}
 

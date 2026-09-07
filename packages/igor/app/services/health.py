@@ -548,7 +548,7 @@ async def raw_rows(
 
 
 def trend(current: list[float], previous: list[float]) -> dict | None:
-    """Period-over-period delta, the single most useful derived number Atomix
+    """Period-over-period delta, the single most useful derived number the health desk
     can cite ("sleep down 8% vs the previous week"). None when either side has
     no data — a fabricated 100% swing against an empty period is worse than
     saying nothing."""

@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 """
-Ultron's schedule-authoring tool.
+the academic desk's schedule-authoring tool.
 
-The owner tells Ultron his timetable in chat; this saves it as the source of
+The owner tells the academic desk his timetable in chat; this saves it as the source of
 truth in the same shape services/academic.py and routers/academic.py already
 speak (see schemas/academic.py, mirrored on the watch by data/ScheduleWire.kt),
 then pushes every registered Ultron Wear watch to refresh immediately rather

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 """
-Ultron's attendance tools — reading the ledger, and asking the watch.
+the academic desk's attendance tools — reading the ledger, and asking the watch.
 
 The math itself lives in services/academic.py; these are the agent-facing
 surface over it, per Rule 1 and Rule 5.

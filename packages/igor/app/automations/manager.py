@@ -395,7 +395,6 @@ async def delete_automation(automation_id: int, db: AsyncSession) -> dict:
 async def test_fire(
     automation_id: int, db: AsyncSession, *, profiles,
     orchestrator, turns, session_manager, telegram_bots,
-    agent_proxy=None, ws_manager=None,
 ) -> dict:
     """Fire an automation's stored intent RIGHT NOW — the exact turn n8n would
     start when its schedule comes due (core.trigger_runner.start_trigger_turn),
@@ -454,8 +453,6 @@ async def test_fire(
         turns=turns,
         session_manager=session_manager,
         telegram_bots=telegram_bots,
-        agent_proxy=agent_proxy,
-        ws_manager=ws_manager,
         triggered_by="n8n",
     )
     if started is None:

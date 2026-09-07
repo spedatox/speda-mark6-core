@@ -13,9 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.context import AgentContext
-from app.core.dispatch import BG_COMMAND, bg_ack
 from app.database import AsyncSessionLocal, get_db
-from app.schemas.chat import ChatRequest, SteerRequest
+from app.schemas.chat import ChatRequest
 from app.core.surface import annotate_last_user
 from app.services.compaction import COMPACT_COMMAND, compact_ack, compact_now
 from app.services.errors import friendly_provider_error
@@ -161,31 +160,25 @@ async def delete_session(
     from app.models.message import Message
     from app.models.message_embedding import MessageEmbedding
     from app.models.tool_call import ToolCall
-    from app.models.agent import AgentRecord
     from app.models.background_job import BackgroundJob
     from app.models.memory import Memory
     from app.models.observation import Observation
 
-    # Six other tables carry a foreign key to sessions.id (memory.py,
-    # observation.py, background_job.py, agent.py, message_embedding.py,
+    # Five other tables carry a foreign key to sessions.id (memory.py,
+    # observation.py, background_job.py, message_embedding.py,
     # tool_call.py) — none of that existed when this endpoint was first
     # written, and a plain DELETE FROM messages started failing FOREIGN KEY
     # constraint failed the moment tool_calls/message_embeddings picked up
     # rows, taking the whole request (and, with it, the worker) down.
     #
     # Two different kinds of reference, two different responses. Memory,
-    # observations, background jobs, and an agent's "currently in" pointer
-    # merely CITE this session for context — they are durable by design
+    # observations and background jobs merely CITE this session for context — they are durable by design
     # (CLAUDE.md: a memory fact stops being current by acquiring a
     # valid_until, never by deletion) and survive with the reference
     # cleared. Message embeddings and tool-call audit rows exist BECAUSE
     # this session's messages do, so they are deleted outright, in
     # child-before-parent order so nothing downstream ever sees a dangling
     # message_id or session_id mid-transaction.
-    await db.execute(
-        update(AgentRecord).where(AgentRecord.current_session_id == session_id)
-        .values(current_session_id=None)
-    )
     await db.execute(
         update(BackgroundJob).where(BackgroundJob.session_id == session_id)
         .values(session_id=None)
@@ -247,53 +240,6 @@ async def _run_chat(
     if request.app.state.turns.is_live(request_id):
         request_id = str(uuid.uuid4())
     user_id = 1
-
-    # /bg <task> — background-dispatch THIS agent and return immediately,
-    # skipping the whole orchestrator/external-proxy turn below. No other
-    # agent's judgment call is in the loop: the owner is already authenticated
-    # by the time a request reaches this router (X-API-Key, middleware/auth.py),
-    # which is exactly the authority `dispatch_agent` normally borrows from
-    # whichever agent calls it — here the owner IS the caller, so dispatching
-    # to the agent this request addresses (`from_agent == to_agent`) is
-    # correct, not a loop risk. The command, the reply text and the
-    # success/refusal branch are shared with the Telegram gateway via
-    # app.core.dispatch, so the two surfaces cannot drift.
-    if body.message.strip().startswith(BG_COMMAND):
-        task_text = body.message.strip()[len(BG_COMMAND):].strip()
-        from app.schemas.sse import SSEEvent, SSEEventType
-
-        session = await session_manager.get_or_create(
-            db=db, user_id=user_id, triggered_by="user",
-            model_used=body.model or profile.allocate_model("user"),
-            agent_id=profile.agent_id, session_id=body.session_id,
-        )
-        # The command is the owner's turn in this conversation; the finished
-        # report threads back into the same session (origin_session_id below),
-        # which is how progress stays visible from the conversation it started in.
-        await session_manager.save_message(db, session.id, "user", body.message)
-
-        if not task_text:
-            reply = f"Usage: {BG_COMMAND} <what to do>"
-        else:
-            dispatcher = request.app.state.dispatcher
-            if dispatcher is None:
-                reply = "Background dispatch isn't available."
-            else:
-                outcome = await dispatcher.spawn(
-                    from_agent=profile.agent_id, to_agent=profile.agent_id,
-                    task=task_text, user_id=user_id, request_id=request_id,
-                    origin_session_id=session.id, allow_self=True,
-                )
-                reply = bg_ack(outcome)
-        await session_manager.save_message(
-            db, session.id, "assistant", [{"type": "text", "text": reply}])
-
-        async def _ack():
-            yield SSEEvent(type=SSEEventType.CHUNK, data=reply,
-                          session_id=session.id, request_id=request_id).to_sse()
-            yield SSEEvent(type=SSEEventType.DONE, data={},
-                          session_id=session.id, request_id=request_id).to_sse()
-        return StreamingResponse(_ack(), media_type="text/event-stream")
 
     # /compact — fold older turns into a rolling summary right now, ignoring
     # the token threshold, and reply with a visible confirmation instead of
@@ -397,16 +343,9 @@ async def _run_chat(
         lambda names, _sid=session.id: session_manager.mark_tools_loaded(_sid, names)
     )
 
-    # Engine selection: an agent backed by a connected standalone peer (Optimus)
-    # streams this turn through the external proxy instead of the in-process
-    # orchestrator. Both yield the same SSEEvents, so persistence, background
-    # tasks and the UI are identical either way; peer offline → normal path.
-    # user_model carries the owner's EXPLICIT model pick (None = peer's choice).
+    # user_model carries the owner's EXPLICIT model pick (None = the profile's
+    # allocation).
     context.extra["user_model"] = body.model
-    # Working directory for an external-backend agent (the Forge). The external
-    # proxy forwards it as chat_request.cwd; in-process agents ignore it.
-    if body.cwd:
-        context.extra["cwd"] = body.cwd
     # Exact live coordinates for the navigation skills (get_route / find_places),
     # so they can default the origin without parsing the prose location line.
     # Not persisted — lives only on this turn's context, like the surface line.
@@ -415,22 +354,15 @@ async def _run_chat(
         context.extra["client_location"] = {
             "lat": _loc.lat, "lng": _loc.lng, "place": _loc.place,
         }
-    # Which surface this turn came from, for the skills that are not available
-    # on every client (house_party). Same discipline as the location above: a
-    # per-turn fact on the context, never persisted onto the session.
+    # Which surface this turn came from. Same discipline as the location above:
+    # a per-turn fact on the context, never persisted onto the session.
     if body.client_context:
         context.extra["client_platform"] = body.client_context.platform
-    use_external = (
-        profile.external_backend
-        and request.app.state.ws_manager.is_connected(profile.agent_id)
-    )
-    agent_proxy = request.app.state.agent_proxy
-
     def engine_factory(ctx: AgentContext):
-        # Same SSEEvents either way, so persistence/UI are identical. The runner
-        # sets ctx.db to its own session before calling this, so the engine and
-        # persistence share one runner-owned session (never the request's).
-        return agent_proxy.run(ctx) if use_external else orchestrator.run(ctx)
+        # The runner sets ctx.db to its own session before calling this, so the
+        # engine and persistence share one runner-owned session (never the
+        # request's).
+        return orchestrator.run(ctx)
 
     def format_error(exc: Exception) -> str:
         return friendly_provider_error(model, exc)
@@ -495,7 +427,7 @@ async def chat_agent(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
-    """Address a specific in-process agent (e.g. /chat/ultron). 404 if unknown."""
+    """Address a specific in-process agent (e.g. /chat/speda). 404 if unknown."""
     return await _run_chat(request, agent_id, body, background_tasks, db)
 
 
@@ -533,20 +465,6 @@ async def chat_cancel(request_id: str, request: Request):
     is persisted with a marker. Returns {cancelled: bool}."""
     ok = await request.app.state.turns.cancel(request_id)
     return {"cancelled": ok}
-
-
-@router.post("/chat/steer/{request_id}")
-async def chat_steer(request_id: str, body: SteerRequest, request: Request):
-    """Inject a message into a running turn instead of starting a second one —
-    the desktop counterpart of the Telegram gateway's steering (app/telegram/
-    gateway.py). Only reaches an EXTERNAL turn: the inbox that claims it lives
-    in the Forge engine (forge/warden/inbox.py), not the in-process
-    orchestrator, so an in-process turn has nothing to steer into. `steered:
-    false` means the composer should fall back to sending a normal message —
-    the turn already ended, or was never external to begin with."""
-    proxy = request.app.state.agent_proxy
-    ok = await proxy.steer(request_id, body.text) if proxy is not None else False
-    return {"steered": ok}
 
 
 @router.websocket("/ws")

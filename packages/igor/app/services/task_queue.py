@@ -55,7 +55,7 @@ MAX_ATTEMPTS = 3
 BACKOFF_MINUTES = (2, 15, 60)
 
 # A claim older than this is presumed orphaned by a crash and returned to the
-# queue. Comfortably longer than the slowest handler (Orion's audit is a
+# queue. Comfortably longer than the slowest handler (the audit is a
 # multi-pass turn, but that runs through the trigger path, not here).
 STALE_CLAIM_MINUTES = 30
 

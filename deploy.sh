@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# SPEDA Mark VI — one-shot server deploy.
+# SPEDA Mark VI Core — one-shot server deploy.
 #
 #   ./deploy.sh                      # build + start the whole stack
 #   ./deploy.sh --migrate speda.db   # ...and import your existing SQLite memory
@@ -22,14 +22,6 @@ done
 
 say() { printf "\n\033[36m▸ %s\033[0m\n" "$*"; }
 
-# ── One-time rename migration (packages/api → packages/igor) ─────────────────
-# The gitignored .env can't ride across the folder rename via git, so move it the
-# first time this runs after the rename. Idempotent — a no-op once migrated.
-if [[ -f packages/api/.env && ! -f packages/igor/.env ]]; then
-  printf "\n\033[36m▸ Migrating packages/api/.env → packages/igor/.env (folder renamed)\033[0m\n"
-  mv packages/api/.env packages/igor/.env
-  rmdir packages/api 2>/dev/null || true
-fi
 
 # ── Preflight ────────────────────────────────────────────────────────────────
 command -v docker >/dev/null || { echo "Docker is not installed."; exit 1; }
@@ -38,26 +30,6 @@ docker compose version >/dev/null 2>&1 || { echo "Docker Compose v2 required."; 
   echo "Missing packages/igor/.env — run: cp packages/igor/.env.example packages/igor/.env  (then fill it in)"
   exit 1
 }
-
-# ── Lifeboat script → the host ───────────────────────────────────────────────
-# The Lifeboat Protocol's reclamation lives in this repo but RUNS on the host, at
-# the path app/services/lifeboat.py calls (settings.lifeboat_script). Nothing
-# used to put it there: the file was copied by hand once, and the repo copy then
-# drifted away from the one actually being executed — so a flag added here simply
-# did not exist on the box, and the tool that called it failed in a way that
-# looked like a broken host rather than a stale file.
-#
-# /opt/speda is the data dir already bind-mounted into the app container, so this
-# is the same directory the SSH key and runtime state live in. Non-fatal on
-# failure: a deploy that cannot write there is still a valid deploy, it just has
-# no lifeboat, and that is worth a warning rather than a dead stack.
-if [[ -f lifeboat.sh ]]; then
-  if mkdir -p /opt/speda 2>/dev/null && install -m 0755 lifeboat.sh /opt/speda/lifeboat.sh 2>/dev/null; then
-    say "Installed lifeboat.sh → /opt/speda/lifeboat.sh"
-  else
-    say "⚠ Could not install lifeboat.sh into /opt/speda (permissions?) — the Lifeboat Protocol will run whatever is already there, or fail. Fix with: sudo install -m 0755 lifeboat.sh /opt/speda/lifeboat.sh"
-  fi
-fi
 
 # ── Domain? ──────────────────────────────────────────────────────────────────
 DOMAIN="$(grep -E '^DOMAIN=' packages/igor/.env 2>/dev/null | cut -d= -f2- | tr -d '[:space:]' || true)"
@@ -102,48 +74,6 @@ EOF
 else
   [[ -n "${N8N_DOMAIN}" ]] && say "N8N_DOMAIN set but DOMAIN is not — Caddy is off, so n8n stays tunnel-only"
   rm -f caddy-sites/n8n.caddy
-fi
-
-# ── H.İ.S.A.R. (optional peer) ───────────────────────────────────────────────
-# Hisar deploys from a sibling clone with its own gitignored .env. If that clone
-# is present and configured, mirror it to main and bring it up in the same
-# stack; otherwise the profile stays off and nothing about this server changes.
-HISAR_DIR="../hisar-mk1"
-if [[ -d "${HISAR_DIR}/.git" ]]; then
-  say "Updating H.İ.S.A.R. clone (${HISAR_DIR})…"
-  git -C "${HISAR_DIR}" fetch --prune origin main
-  git -C "${HISAR_DIR}" reset --hard origin/main
-fi
-HISAR_ON=false
-if [[ -f "${HISAR_DIR}/.env" ]]; then
-  HISAR_ON=true
-  PROFILE+=(--profile hisar)
-
-  # Its public hostname is a sibling of $DOMAIN, not a subdomain of it, so it
-  # comes from Hisar's own .env. Caddy imports whatever lands in caddy-sites/;
-  # the file is gitignored, keeping the hostname out of this public repo.
-  HISAR_DOMAIN="$(grep -E '^HISAR_PUBLIC_DOMAIN=' "${HISAR_DIR}/.env" | cut -d= -f2- | tr -d '[:space:]' || true)"
-  mkdir -p caddy-sites
-  if [[ -n "${HISAR_DOMAIN}" ]]; then
-    say "H.İ.S.A.R. configured — ${HISAR_DOMAIN}"
-    # max_size must be >= HISAR_MAX_UPLOAD_BYTES or Caddy truncates large
-    # uploads before the API ever sees them.
-    rm -f caddy-sites/hisar.caddy
-    cat > caddy-sites/hisar.caddy <<EOF
-${HISAR_DOMAIN} {
-	reverse_proxy hisar:8600
-
-	request_body {
-		max_size 2GB
-	}
-}
-EOF
-  else
-    say "H.İ.S.A.R. configured, but HISAR_PUBLIC_DOMAIN is unset — no TLS site block written"
-    rm -f caddy-sites/hisar.caddy
-  fi
-else
-  say "No ${HISAR_DIR}/.env — skipping H.İ.S.A.R. (see hisar-mk1/deploy/README.md)"
 fi
 
 # ── n8n's callback secrets + the browser's shared token ────────────────────--
@@ -214,20 +144,6 @@ for _ in $(seq 1 60); do
 done
 $ok && echo "  API is healthy." || echo "  ⚠ API did not report healthy in 120s — check: docker compose logs app"
 
-# ── Wait for Hisar health (only when it is part of this deploy) ──────────────
-if $HISAR_ON; then
-  say "Waiting for H.İ.S.A.R. to come up…"
-  hok=false
-  for _ in $(seq 1 30); do
-    if docker compose "${PROFILE[@]}" exec -T hisar python -c \
-       "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8600/health')" 2>/dev/null; then
-      hok=true; break
-    fi
-    sleep 2
-  done
-  $hok && echo "  H.İ.S.A.R. is healthy." || echo "  ⚠ H.İ.S.A.R. did not report healthy in 60s — check: docker compose logs hisar"
-fi
-
 # ── Import memory (optional, one time) ───────────────────────────────────────
 if [[ -n "${MIGRATE_DB}" ]]; then
   [[ -f "${MIGRATE_DB}" ]] || { echo "Migration source not found: ${MIGRATE_DB}"; exit 1; }
@@ -249,9 +165,8 @@ fi
 say "Deployed."
 if [[ -n "${DOMAIN}" ]]; then
   echo "  Live at: https://${DOMAIN}"
-  echo "  Build the desktop app pointed here:"
-  echo "    powershell -File build-app.ps1 -ApiBase https://${DOMAIN} -ApiKey <SPEDA_API_KEY>"
-  if $HISAR_ON && [[ -n "${HISAR_DOMAIN:-}" ]]; then echo "  H.İ.S.A.R.: https://${HISAR_DOMAIN}"; fi
+  echo "  Point the desktop app here: set MAIN_VITE_SPEDA_API_BASE before"
+  echo "    npm run striker:dist"
 else
   echo "  Live at: http://<server-ip>:8000"
 fi

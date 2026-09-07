@@ -5,13 +5,13 @@ import { useEffect, useState } from 'react'
 import AgentMark from './AgentMark'
 
 /**
- * The lock screen's screensaver — the roster, one agent at a time.
+ * The lock screen's screensaver — the agent card, one at a time.
  *
  * Each beat is the welcome screen's own move, played alone on black: the mark
  * arrives, the name types itself out beside it, it holds, and the whole card
  * dissolves so the next agent can take the screen. Every beat is lit in that
  * agent's signature accent — the mark, the name, the rule and the wash behind
- * it — so the parade reads as the roster and not as one branded slide reused
+ * it — so the parade reads as a card set and not as one branded slide reused
  * eight times.
  *
  * The card and the clock drift on two long, mutually prime sines. That is not
@@ -172,7 +172,7 @@ export function AgentCard({ agent, animate = true }: {
   )
 }
 export default function LockScreensaver({ agents, dwellMs, lockedLabel }: {
-  /** The roster to parade. One entry is legal — Striker has exactly one. */
+  /** The cards to parade. One entry is legal — Core has exactly one. */
   agents: SaverAgent[]
   /** How long a finished card holds before it dissolves. */
   dwellMs: number

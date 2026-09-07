@@ -23,9 +23,9 @@ Two rules keep it safe to switch on against a live store:
   1. **Only newly-introduced violations are hard errors.** A write is checked as
      a DELTA (before → after). Existing mess in a file never blocks an unrelated
      edit; the write only has to avoid making things worse. This is what lets
-     enforcement land before Orion's audit has cleaned anything.
+     enforcement land before the nightly audit has cleaned anything.
   2. **The owner is never blocked.** §4.3 makes owner commits ground truth. His
-     writes are inspected and reported, never rejected — Orion re-files them.
+     writes are inspected and reported, never rejected — the nightly audit re-files them.
 """
 
 import re
@@ -49,7 +49,7 @@ _INJECTED_PATHS = frozenset({
     "/memories/patterns.md",
 })
 
-# `- [2026-07-06, sentinel] wants totals before breakdowns.` — the dossier's
+# `- [2026-07-06, speda] wants totals before breakdowns.` — the dossier's
 # attribution stamp. Multiple observers merge into one entry (§ Pass 3), so the
 # agent list is comma/plus separated.
 _DOSSIER_ENTRY = re.compile(r"^\s*[-*]\s+")
@@ -62,7 +62,7 @@ _DOSSIER_SECTIONS = (
     "## Open questions",
 )
 
-# Relative dates that will be meaningless the moment the file is re-read. Orion's
+# Relative dates that will be meaningless the moment the file is re-read. the audit's
 # Pass 3 converts these; catching them at write time means he has less to fix.
 _RELATIVE_DATES = re.compile(
     r"\b(next (week|month|year|monday|tuesday|wednesday|thursday|friday|saturday|sunday)"
@@ -71,7 +71,7 @@ _RELATIVE_DATES = re.compile(
     re.IGNORECASE,
 )
 
-# Dates in any shape other than ISO. Normalising these is Orion's Pass 3; warning
+# Dates in any shape other than ISO. Normalising these is the audit's Pass 3; warning
 # here keeps the drift from accumulating between audits.
 _NON_ISO_DATE = re.compile(r"\b\d{1,2}[/.]\d{1,2}[/.]\d{2,4}\b")
 
@@ -117,7 +117,7 @@ def is_removable(path: str) -> bool:
     its members are slugged from whatever the owner called the thing this
     week, so two spellings of one project or one person genuinely produce two
     files for the same entity. Merging those and deleting the stray is the
-    tail of Orion's dedup pass, and the whole reason `delete` exists.
+    tail of the dedup pass, and the whole reason `delete` exists.
     """
     if path in CANONICAL_FILES:
         return False
@@ -263,7 +263,7 @@ def _member_violations(path: str, content: str) -> list[str]:
     return problems
 
 
-# `- [2026-08-22, ultron, medium] plans made after a night shift slip → schedule
+# `- [2026-08-22, speda, medium] plans made after a night shift slip → schedule
 # the light block first.` Same attribution stamp as the dossier plus a
 # confidence, because a pattern is INDUCED and can be wrong, and one more thing:
 # the arrow. A line with no countermeasure is an observation that wandered into
@@ -347,7 +347,7 @@ def check_write(
     """
     is_owner = author == "owner"
 
-    # System trails are Orion's plumbing, not owner knowledge. No taxonomy.
+    # System trails are the audit's plumbing, not owner knowledge. No taxonomy.
     if is_system_path(path):
         return []
 
@@ -373,30 +373,6 @@ def check_write(
 
     hard: list[str] = []
 
-    # ── Ownership: an agent writes its own document, not a colleague's ───────
-    #
-    # Declared in memory_spec from the revision trail, and until now only
-    # declared. The trail shows it was already breached: speda wrote finance.md
-    # six times and ops.md once — documents owned by sentinel and orion. That is
-    # not vandalism, it is an agent being helpful in a lane it does not know, and
-    # it is how a ledger acquires rows in a format its owner does not maintain.
-    #
-    # Reading stays open to everyone; only writing is scoped. The owner and Orion
-    # are exempt — the first is ground truth, the second is the custodian whose
-    # whole job is repairing other people's documents.
-    from app.services.memory_spec import owner_of
-
-    document_owner = owner_of(path)
-    if document_owner and author not in (document_owner, "owner", "orion"):
-        raise MemorySchemaViolation(
-            f"Write rejected — `{path}` belongs to {document_owner}, not to you.\n\n"
-            f"Nothing was saved. If the fact is yours to record, put it in your own "
-            f"document or in the shared ones (current.md, social.md, projects.md, "
-            f"dossier.md). If it genuinely belongs here, hand it to {document_owner} "
-            f"with `dispatch_agent` — a ledger kept by one hand stays readable, and "
-            f"one kept by five does not."
-        )
-
     # ── A split registry is written in its new home, not its old one ─────────
     #
     # Deployment is GitOps, so this code reaches prod before anyone runs the
@@ -407,12 +383,11 @@ def check_write(
     # Freezing the monolith on DEPLOY rather than on migration closes the window
     # completely: new knowledge only ever has one home, whether or not the split
     # has run yet. Reads keep working, so nothing is lost in the meantime.
-    # Orion is exempt because repairing documents is his job, and the owner is
-    # never blocked (§4.3).
+    # The owner is exempt: owner writes are never blocked (§4.3).
     from app.services.memory_spec import collection_from_monolith, member_path
 
     superseded = collection_from_monolith(path)
-    if superseded is not None and author not in ("owner", "orion"):
+    if superseded is not None and author != "owner":
         if superseded.depth == 2:
             example = f"{superseded.root}/<category>/<name>.md"
             groups = f" Categories: {', '.join(superseded.groups)}." if superseded.groups else ""
@@ -440,7 +415,7 @@ def check_write(
     from app.services.memory_spec import shard_member, shard_root
 
     flat = shard_root(path) if shard_member(path) is None else None
-    if flat is not None and author not in ("owner", "orion"):
+    if flat is not None and author != "owner":
         coll, member = flat
         raise MemorySchemaViolation(
             f"Write rejected — `{coll.root}/{member.stem}` is a DIRECTORY now, one "
@@ -505,7 +480,7 @@ def check_write(
         hard.append(f"The /memories taxonomy is closed — {detail}")
 
     # 2. Size. Only enforced on GROWTH — an already-oversized file must stay
-    #    editable, or Orion could never compress it back under the cap.
+    #    editable, or the nightly audit could never compress it back under the cap.
     cap = max_bytes_for(path)
     after_size = len(after.encode("utf-8"))
     before_size = len(before.encode("utf-8"))
@@ -517,7 +492,7 @@ def check_write(
             f"grow past the point where it is cheap to carry."
         )
 
-    # 3. Per-file schema, delta-only: a violation that already existed is Orion's
+    # 3. Per-file schema, delta-only: a violation that already existed is the audit's
     #    to clean, not this write's to be blamed for.
     existing = set(_structural_violations(path, before)) if before else set()
     introduced = [v for v in _structural_violations(path, after) if v not in existing]
@@ -532,6 +507,6 @@ def check_write(
 
     warnings = verifier_warnings + _soft_warnings(path, after)
     if hard and is_owner:
-        # Ground truth lands regardless; Orion re-files it and the trail records why.
+        # Ground truth lands regardless; the nightly audit re-files it and the trail records why.
         warnings = [f"(owner commit, accepted as-is) {h}" for h in hard] + warnings
     return warnings

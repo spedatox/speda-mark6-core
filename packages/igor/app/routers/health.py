@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 """
-Liveness probe + the Atomix health-sync ingestion surface.
+Liveness probe + the the health desk health-sync ingestion surface.
 
 Note the auth asymmetry, and keep it: GET /health is the ONLY unauthenticated
 path here (AuthMiddleware matches it exactly, not as a prefix), so every

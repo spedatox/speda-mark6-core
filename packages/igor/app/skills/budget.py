@@ -18,7 +18,7 @@ class BudgetModeSkill(Skill):
         "Turns Speda's budget mode ON or OFF when the owner asks (e.g. 'go budget "
         "mode', 'activate budget mode', 'stop saving money', 'unleash yourself', "
         "'turn off budget mode'). Budget mode forces short answers, minimises web "
-        "searches, and disables the expensive Legion workers. Use this ONLY when the owner "
+        "searches. Use this ONLY when the owner "
         "clearly intends to change the cost/verbosity setting — not for ordinary "
         "requests. The change persists across restarts and takes effect from the "
         "next turn. Returns a confirmation of the new state."
@@ -46,10 +46,10 @@ class BudgetModeSkill(Skill):
         if enabled:
             return (
                 "Budget mode is now ON. From the next turn: concise answers, minimal "
-                "searches, the Legion stood down. Tell me to turn it off when you want "
+                "searches. Tell me to turn it off when you want "
                 "full power again."
             )
         return (
             "Budget mode is now OFF. Full capabilities restored — deep research and "
-            "the Legion are available again. I'll spend where it counts."
+            "I'll spend where it counts."
         )

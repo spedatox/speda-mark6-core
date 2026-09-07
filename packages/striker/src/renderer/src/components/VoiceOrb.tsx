@@ -149,7 +149,7 @@ function dotTexture(): THREE.Texture {
  *
  * This is SAMPLED, never latched. Switching agents does not set the accent, it
  * *animates* it: `profile/theme.ts` rebuilds the whole palette on a rAF loop
- * over ~500ms (and parades it continuously during House Party). Reading once on
+ * over ~500ms. Reading once on
  * an `agentId` effect — which is what this used to do — samples the very first
  * frame of that morph, i.e. the colour the OLD agent still had, and then holds
  * it forever. That is why the orb kept showing the previous agent's colour no

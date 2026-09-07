@@ -7,9 +7,8 @@ from app.profiles.base import AgentProfile
 
 logger = logging.getLogger(__name__)
 
-# The agent that backs every legacy/unscoped path (default sessions, the bare
-# /chat route until /chat/{agent_id} lands, import jobs that just need a cheap
-# model). Must always be registered.
+# The agent that backs every unscoped path (default sessions, the bare /chat
+# route, import jobs that just need a cheap model). Must always be registered.
 DEFAULT_AGENT_ID = "speda"
 
 
@@ -17,17 +16,16 @@ class ProfileRegistry:
     """
     Holds every enabled in-process AgentProfile, keyed by agent_id.
 
-    Replaces the single ``app.state.profile`` of the pre-multi-tenant design.
-    The orchestrator resolves a profile per request from ``context.agent_id``;
-    presence ("is agent X available?") is a dict lookup here, not a socket.
-    Optimus is NOT in here — it is an external WebSocket peer, not a profile.
+    Core registers exactly one (Speda). The class stays because the orchestrator
+    resolves a profile per request from ``context.agent_id`` and the rest of the
+    engine is written against that interface — a roster of one is still a roster.
     """
 
     def __init__(self) -> None:
         self._profiles: dict[str, AgentProfile] = {}
 
     def register(self, profile: AgentProfile) -> None:
-        """Register one profile. agent_id must be unique across the suite."""
+        """Register one profile. agent_id must be unique."""
         agent_id = profile.agent_id
         if agent_id in self._profiles:
             raise ValueError(
@@ -66,5 +64,5 @@ class ProfileRegistry:
         return self.require(DEFAULT_AGENT_ID)
 
     def roster(self) -> list[AgentProfile]:
-        """All enabled profiles, sorted by agent_id — the agent directory."""
+        """All enabled profiles, sorted by agent_id."""
         return [self._profiles[k] for k in sorted(self._profiles)]

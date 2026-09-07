@@ -330,7 +330,7 @@ class SearchMemorySkill(Skill):
             "observer": {
                 "type": "string",
                 "description": (
-                    "Optional: only what this agent observed (speda, sentinel, atomix, …). "
+                    "Optional: only what this agent observed. "
                     "Convergence between independent agents is the strongest signal, so "
                     "leave it unset unless you specifically want one agent's view."
                 ),

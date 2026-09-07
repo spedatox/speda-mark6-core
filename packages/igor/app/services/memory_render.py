@@ -24,7 +24,7 @@ function `observations.target_file` is total by construction, and
 render nowhere. The one thing worse than a misfiled fact is an invisible one.
 
 The two remaining files — owner.md and current.md — are NOT rendered here. They
-are prose and Orion composes them (v3 §4.2); assembling a biography out of
+are prose and the nightly audit composes them (v3 §4.2); assembling a biography out of
 bullet points would be a worse artifact for the human who reads it.
 """
 
@@ -71,7 +71,7 @@ logger = logging.getLogger(__name__)
 RENDERED_FILES: tuple[str, ...] = ()
 
 # sessions.md compression thresholds (v2 §2.2, now a rendering rule rather than
-# an edit Orion has to perform). Raw detail is never the durable asset; the trend
+# an edit the nightly audit has to perform). Raw detail is never the durable asset; the trend
 # is. Expressed in days so the arithmetic is obvious at the call site.
 SESSIONS_FULL_DETAIL_DAYS = 28    # ≤ 4 weeks: every entry in full
 SESSIONS_WEEKLY_DAYS = 84         # ≤ 12 weeks: one line per week; older: per month
@@ -97,7 +97,7 @@ def _dated(obs: Observation) -> str:
 
 def _entry(obs: Observation, *, show_observer: bool = True) -> str:
     """One observation as a markdown bullet, carrying its id so the owner (and
-    Orion) can act on it without a lookup."""
+    the nightly audit) can act on it without a lookup."""
     tag = f"[{_dated(obs)}"
     if show_observer:
         tag += f", {obs.observer}"
@@ -181,7 +181,7 @@ def render_sessions(rows: list[Observation], today: date) -> str:
     """The training log, compressed by age.
 
     Recent sessions in full, then one line per week, then per month. The
-    compression is a rendering rule rather than something Orion performs, so it
+    compression is a rendering rule rather than something the nightly audit performs, so it
     can never be half-applied and the raw observations behind an old rolled-up
     week are still queryable — the file gets shorter, the record does not.
     """

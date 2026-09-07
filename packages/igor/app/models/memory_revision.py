@@ -14,7 +14,7 @@ class MemoryRevision(Base):
     Append-only audit trail for every write to the /memories virtual filesystem.
 
     One row is recorded on EVERY mutation, no matter the author: the memory skill
-    (an agent writing mid-conversation), Orion's nightly audit, and owner commits
+    (the agent writing mid-conversation), the nightly audit, and owner commits
     from the systems board all land here. This is what makes memory recoverable
     and accountable — it answers "who changed this, when, and what did it say
     before?" without depending on prose timestamps inside the files themselves.
@@ -31,8 +31,8 @@ class MemoryRevision(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     path: Mapped[str] = mapped_column(String(512))
-    # "owner" for a systems-board commit, "orion" for the custodian's audit, or
-    # any agent_id ("speda", "atomix", …) for an in-conversation write.
+    # "owner" for a systems-board commit, "speda" for the nightly audit, or
+    # the agent_id ("speda") for an in-conversation write.
     author: Mapped[str] = mapped_column(String(64))
     # The mutation kind, mirroring the memory tool commands + owner/system paths:
     # create | str_replace | insert | delete | commit | restore | audit

@@ -22,8 +22,9 @@ interface LayoutProps {
 
 /**
  * Core layout — single agent, no roster. Just the sidebar, header, chat deck,
- * the systems board and settings (plus the mobile drawer). Heartbreaker's war
- * room, comms tray, roster strip and agent switcher are deliberately absent.
+ * the systems board and settings (plus the mobile drawer). The full build's
+ * war room, comms tray, roster strip and agent switcher are deliberately
+ * absent.
  */
 export default function Layout({ profile, config }: LayoutProps) {
   const { dispatch } = useChatContext()

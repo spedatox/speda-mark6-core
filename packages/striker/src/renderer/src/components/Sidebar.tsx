@@ -401,7 +401,7 @@ function SidebarHeader({ profile, onToggle, onSearch, searchActive }: {
   const markSize = brandLen > 18 ? '0.62rem' : brandLen > 14 ? '0.72rem' : '0.82rem'
   const tracking = brandLen > 14 ? '0.1em' : '0.18em'
   // The logo tracks the wordmark's size — a fixed box would tower over the
-  // shrunken long names (NightCrawler) and crowd out the model number.
+  // shrunken a long name and crowd out the model number.
   const logoSize = brandLen > 18 ? 15 : brandLen > 14 ? 18 : 21
 
   return (

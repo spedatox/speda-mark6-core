@@ -21,15 +21,12 @@ export interface AppSettings {
    *  room, so the rail can fold it away. */
   telemetryOpen: boolean
   userName: string
-  /** Working directory sent to the Forge for Optimus jobs (Cell workspace +
-   *  Graphify root). Empty = the peer's own default workspace. */
-  forgeCwd: string
   /** BCP-47 locale replies are SPOKEN in, sent as `locale` on every synthesis
    *  call. DERIVED from `locale` — never set on its own any more: the language
    *  switch (lib/language.ts) moves both together, and `load()` re-derives it
    *  for a deck saved back when the two could drift apart. Still separate from
-   *  the VOICE, which is a different axis entirely: the roster uses
-   *  multilingual voices, named en-US-… whatever language they are reading. */
+   *  the VOICE, which is a different axis entirely: the voices are
+   *  multilingual, named en-US-… whatever language they are reading. */
   voiceLocale: string
   /** Which voice speaks the replies, as a full ref the backend parses —
    *  "openai:gpt-4o-mini-tts:nova" or "azure:tr-TR-EmelNeural". Deliberately
@@ -90,7 +87,6 @@ const DEFAULT: AppSettings = {
   sidebarOpen: true,
   telemetryOpen: true,
   userName: '',
-  forgeCwd: '',
   voiceLocale: 'en-US',
   voiceModel: '',
   voiceOrbDock: { dx: 0, dy: 0, scale: 1 },

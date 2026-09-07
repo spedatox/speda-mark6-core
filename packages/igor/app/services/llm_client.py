@@ -316,7 +316,7 @@ def _use_responses_api(provider: str, model: str, kwargs: dict) -> bool:
 
 # ── Normalized response types ────────────────────────────────────────────────
 # Attribute-compatible with the Anthropic SDK objects callers already consume:
-# blocks_to_dicts (block.type/.text/.id/.name/.input), the Legion worker
+# blocks_to_dicts (block.type/.text/.id/.name/.input), the worker
 # loop, memory/history_indexer (response.content[0].text),
 # and the orchestrator's usage logging (getattr with defaults).
 
@@ -356,7 +356,7 @@ class LLMMessage:
 def blocks_to_dicts(content_blocks) -> list[dict]:
     """Convert content blocks (Anthropic SDK objects or the dataclasses above —
     both expose .type/.text/.id/.name/.input) to plain dicts for message
-    history. Shared by the orchestrator loop and the Legion worker loop."""
+    history."""
     result = []
     for block in content_blocks:
         if block.type == "text":

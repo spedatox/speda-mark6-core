@@ -23,22 +23,16 @@ class AutomationsSkill(Skill):
         self._turns = None
         self._session_manager = None
         self._telegram_bots = None
-        self._agent_proxy = None
-        self._ws_manager = None
 
     def wire(self, *, profiles, orchestrator, turns, session_manager,
-             telegram_bots, agent_proxy=None, ws_manager=None) -> None:
-        """Called once from main.py's lifespan, at the same point the trigger
-        reporters are wired — reuses that exact dependency set (main.py's
-        `reporter_deps`), since action='test' needs precisely what a finished
-        legionnaire's report turn needs: a way to start a real trigger turn."""
+             telegram_bots) -> None:
+        """Called once from main.py's lifespan (`reporter_deps`): action='test'
+        needs a way to start a real trigger turn."""
         self._profiles = profiles
         self._orchestrator = orchestrator
         self._turns = turns
         self._session_manager = session_manager
         self._telegram_bots = telegram_bots
-        self._agent_proxy = agent_proxy
-        self._ws_manager = ws_manager
 
     name = "manage_automations"
     deferred = True
@@ -72,7 +66,7 @@ class AutomationsSkill(Skill):
         "\n  'task' — mechanically identical to 'briefing' (same schedule, same "
         "push-and-report shape) but for assigning an ACTION rather than a digest: go "
         "DO something with a real tool on a schedule and report what happened, e.g. "
-        "'run the Octavius backup every week and tell me the details'. Pick this one "
+        "'run the weekly cleanup and tell me the details'. Pick this one "
         "when the ask is a verb ('run X', 'check Y', 'back up Z'), 'briefing' when "
         "it's a noun ('summarize my news', 'my morning update')."
         "\n  'reminder' — a plain nudge, not data-gathering. Any frequency including "
@@ -273,8 +267,7 @@ class AutomationsSkill(Skill):
                     int(aid), context.db,
                     profiles=self._profiles, orchestrator=self._orchestrator,
                     turns=self._turns, session_manager=self._session_manager,
-                    telegram_bots=self._telegram_bots, agent_proxy=self._agent_proxy,
-                    ws_manager=self._ws_manager,
+                    telegram_bots=self._telegram_bots,
                 )
                 return (
                     f"Test fired for automation {aid} (request_id {result['request_id']}) — "

@@ -11,7 +11,7 @@
  * call — the text is sent verbatim, which is also why it is written by hand
  * rather than composed.
  *
- * A reminder an agent opens itself (Atomix's evening checklist, composed fresh
+ * A reminder the agent opens itself (an evening checklist, composed fresh
  * each night) has no definition and so does not appear in this list; its
  * outcome still shows in the history below.
  */
@@ -25,10 +25,10 @@ import { SkeletonList } from './Skeleton'
 import { useT } from '../lib/i18n'
 import type { Dict } from '../lib/i18n/en'
 
-const AGENTS = ['speda', 'atomix', 'ultron', 'sentinel', 'nightcrawler', 'centurion', 'orion']
+const AGENTS = ['speda']
 
 const blank = (t: Dict): ReminderDefinition => ({
-  id: '', agent: 'atomix', text: '', at: '09:00', days: '*',
+  id: '', agent: 'speda', text: '', at: '09:00', days: '*',
   options: [{ label: t.remindersTab.defaultDoneLabel, value: 'done' }],
   every_minutes: 5, max_asks: 10, enabled: true,
 })

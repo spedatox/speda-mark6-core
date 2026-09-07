@@ -11,7 +11,7 @@ from app.database import Base
 
 class Session(Base):
     __tablename__ = "sessions"
-    # Agent-scoped listing — Sentinel's history never shows up in Ultron's list.
+    # Agent-scoped listing — one agent's history never shows up in another's list.
     __table_args__ = (
         Index("ix_sessions_user_agent_started", "user_id", "agent_id", "started_at"),
     )

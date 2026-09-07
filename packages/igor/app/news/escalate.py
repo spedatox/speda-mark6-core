@@ -5,10 +5,10 @@
 Keyword-hit escalation — the one place a Tier-1 flag becomes an LLM turn.
 
 When the collector matches a watchlist keyword it calls fire_news_flash(), which
-runs NightCrawler (the OSINT / surveillance persona) through its normal
+runs the news desk (the OSINT / surveillance persona) through its normal
 orchestrator loop as a background task and delivers the result as a push — the
 same machinery /trigger uses, so there is no HTTP loopback and no new transport.
-NightCrawler decides whether the item truly warrants the owner's attention and
+the news desk decides whether the item truly warrants the owner's attention and
 may corroborate it with one Tier-2 news_deep_dive before pushing.
 
 Best-effort by contract: any failure here is logged and swallowed — a news flash
@@ -26,11 +26,13 @@ from app.schemas.sse import SSEEventType
 
 logger = logging.getLogger(__name__)
 
-_FLASH_AGENT = "nightcrawler"
+from app.profiles.registry import DEFAULT_AGENT_ID
+
+_FLASH_AGENT = DEFAULT_AGENT_ID
 
 
 async def fire_news_flash(app, *, keyword: str, item: NewsItem) -> None:
-    """Spawn a NightCrawler push turn for a flagged headline. Returns immediately;
+    """Spawn a push turn for a flagged headline. Returns immediately;
     the turn runs detached. Missing services (early startup) → logged no-op."""
     state = getattr(app, "state", None)
     orchestrator = getattr(state, "orchestrator", None)
@@ -102,7 +104,7 @@ async def _run_flash(orchestrator, profiles, telegram_bots, profile, payload: di
                     chunks.append(event.data)
             final_text = "".join(chunks).strip()
 
-            # NightCrawler can suppress a low-value flash by answering SKIP.
+            # The agent can suppress a low-value flash by answering SKIP.
             if not final_text or final_text.upper().startswith("SKIP"):
                 logger.info("news_flash_suppressed", extra={"keyword": keyword})
                 return

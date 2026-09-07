@@ -1,9 +1,8 @@
 {
-  "name": "speda-mark6",
+  "name": "speda-mark6-core",
   "private": true,
   "workspaces": [
-    "packages/striker",
-    "packages/heartbreaker"
+    "packages/striker"
   ],
   "scripts": {
     "striker:dev": "npm run dev --workspace=packages/striker",
@@ -11,12 +10,7 @@
     "striker:typecheck": "npm run typecheck --workspace=packages/striker",
     "striker:web:dev": "npm run web:dev --workspace=packages/striker",
     "striker:web:build": "npm run web:build --workspace=packages/striker",
-    "striker:dist": "npm run dist --workspace=packages/striker",
-    "heartbreaker:dev": "npm run dev --workspace=packages/heartbreaker",
-    "heartbreaker:build": "npm run build --workspace=packages/heartbreaker",
-    "heartbreaker:typecheck": "npm run typecheck --workspace=packages/heartbreaker",
-    "heartbreaker:web:dev": "npm run web:dev --workspace=packages/heartbreaker",
-    "heartbreaker:web:build": "npm run web:build --workspace=packages/heartbreaker"
+    "striker:dist": "npm run dist --workspace=packages/striker"
   },
   "dependencies": {
     "electron": "^42.4.0"

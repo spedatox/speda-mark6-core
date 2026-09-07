@@ -814,7 +814,6 @@ class _OnlineSkill(_OfflineSkill):
 @pytest.fixture
 async def registry():
     r = CapabilityRegistry()
-    r.register_legion()
     await r.register_skill(_OfflineSkill())
     await r.register_skill(_OnlineSkill())
     return r

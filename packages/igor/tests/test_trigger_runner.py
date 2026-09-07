@@ -112,7 +112,7 @@ def _engine(text="Slept 7h12m, resting HR 54.", error=False):
 
 
 async def _fire(db, *, payload, output_mode="push", engine=None, bots=None,
-                profile=None, agent_proxy=None, ws_manager=None):
+                profile=None):
     """Fire a triggered turn and return once it has actually settled.
 
     The turn is detached, and everything asserted below — the persisted rows,
@@ -128,7 +128,6 @@ async def _fire(db, *, payload, output_mode="push", engine=None, bots=None,
         db=db, profile=profile or _Profile(), payload=payload, output_mode=output_mode,
         request_id="req-1", orchestrator=type("O", (), {"run": staticmethod(engine or _engine())})(),
         turns=turns, session_manager=sm, telegram_bots=bots,
-        agent_proxy=agent_proxy, ws_manager=ws_manager,
     )
     assert started is not None, "registry refused the turn — nothing ran"
     # Bounded only so a genuinely hung turn fails loudly instead of hanging the
@@ -232,43 +231,6 @@ async def test_second_run_in_the_same_session_sees_the_first(db):
     await sm.save_message(db, session.id, "assistant", "earlier answer")
     history = await sm.load_history(db, session.id)
     assert len(history) == 2 and history[0]["role"] == "user"
-
-
-async def test_a_peer_backed_agent_is_triggered_on_its_peer_not_the_local_stub(db):
-    """Same engine selection chat makes: an agent whose real backend is a
-    connected standalone peer (Optimus/Forge) must run there on an automated
-    turn too, instead of silently falling back to its in-process stub."""
-    class _Peered(_Profile):
-        agent_id = "optimus"
-        external_backend = True
-
-    used: list[str] = []
-
-    class _Proxy:
-        @staticmethod
-        def run(ctx):
-            used.append("peer")
-            return _engine("peer answer")(ctx)
-
-    _, _, bots = await _fire(
-        db, payload={"job": "nightly_build"}, profile=_Peered(),
-        agent_proxy=_Proxy(), ws_manager=type("W", (), {"is_connected": lambda self, a: True})(),
-    )
-    assert used == ["peer"]
-    assert bots.sent == [("optimus", "peer answer")]
-
-
-async def test_an_offline_peer_falls_back_to_the_in_process_profile(db):
-    class _Peered(_Profile):
-        agent_id = "optimus"
-        external_backend = True
-
-    _, _, bots = await _fire(
-        db, payload={"job": "nightly_build"}, profile=_Peered(),
-        agent_proxy=type("P", (), {"run": staticmethod(_engine("peer"))})(),
-        ws_manager=type("W", (), {"is_connected": lambda self, a: False})(),
-    )
-    assert bots.sent == [("optimus", "Slept 7h12m, resting HR 54.")]
 
 
 async def test_post_turn_tasks_run_on_the_background_model(db, post_turn_calls):

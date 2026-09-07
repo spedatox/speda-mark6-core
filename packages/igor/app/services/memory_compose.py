@@ -166,7 +166,7 @@ async def _write(
         existing.content = body
         existing.updated_at = datetime.now(timezone.utc)
     await record_revision(
-        db, user_id=user_id, path=path, author="orion",
+        db, user_id=user_id, path=path, author="speda",
         action="compose", before=before, after=body, request_id=request_id,
     )
     await db.commit()
@@ -219,7 +219,7 @@ async def compose(
             else:
                 text = (
                     "# Owner Profile — who he is, and what shaped him\n\n"
-                    f"_Composed from the record on {day} by orion. Do not edit — "
+                    f"_Composed from the record on {day} by speda. Do not edit — "
                     f"correct the underlying facts instead._\n\n"
                     f"{body}\n"
                 )
@@ -254,7 +254,7 @@ async def compose(
             else:
                 text = (
                     "# Current — what's active right now\n\n"
-                    f"_Composed from the record on {day} by orion. Do not edit — "
+                    f"_Composed from the record on {day} by speda. Do not edit — "
                     f"correct the underlying facts instead._\n\n"
                     f"{body}\n"
                 )

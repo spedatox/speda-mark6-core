@@ -26,7 +26,7 @@
  * }
  *
  * Colours come from the active agent's accent via CSS vars, so the widget
- * themes itself per agent (Optimus teal, Atomix green, …).
+ * themes itself from the agent accent.
  */
 
 import { useMemo } from 'react'

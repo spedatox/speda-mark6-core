@@ -254,13 +254,6 @@ class Settings(BaseSettings):
     speda_api_key: str = "dev-key"
     # Shared secret for the n8n webhook trigger — X-N8N-Secret.
     n8n_secret: str = "dev-n8n-secret"
-    # House Party Protocol authorization passphrase. The all-hands protocol is
-    # heavy, expensive and still a prototype, so engaging it requires the owner
-    # to speak this exact passphrase — the house_party tool validates the agent's
-    # supplied value against this in constant time and refuses otherwise. Speda
-    # never knows it; it must be given by the owner each time. Change it in .env.
-    house_party_passphrase: str = "wheels-up-24-karat"
-
     # ── CORS ─────────────────────────────────────────────────────────────────
     # Comma-separated *extra* allowed browser origins. The desktop client's
     # `app://bundle` origin is always allowed by main.py and does not need to be
@@ -274,14 +267,6 @@ class Settings(BaseSettings):
     # n8n is the sole scheduling/automation organ (CLAUDE.md). Speda is a CONTROL
     # PLANE over its REST API — it composes/lists/toggles workflows but never
     # schedules anything internally. Default host is the docker-compose service.
-    # ── Hisar: the owner's own cloud filesystem ──────────────────────────────
-    # Reached over the container network, not the public hostname — this is an
-    # internal call and should not leave the box. The machine token is the same
-    # HISAR_MACHINE_TOKEN the Hisar container holds; it grants read across the
-    # vault and write only under /Speda and /Forge (server/auth.py there).
-    hisar_base_url: str = "http://hisar:8600"
-    hisar_machine_token: str = ""
-
     n8n_api_url: str = "http://n8n:5678"
     n8n_api_key: str = ""   # n8n → Settings → n8n API → create key
     # URL n8n uses to call BACK into Speda's /trigger endpoint. Internal compose
@@ -294,25 +279,13 @@ class Settings(BaseSettings):
     automation_run_retention_days: int = 180
 
     # ── Telegram (first-class chat channel + primary notification surface) ────
-    # ONE BOT PER AGENT. Each agent speaks from its own @BotFather bot so a
-    # Sentinel budget alert arrives from @SentinelBot and a NightCrawler hit
-    # from @NightCrawlerBot — attribution lives at the notification surface.
-    # Tokens are SECRETS (config, keyed by agent_id); the agent's *identity* is
-    # its profile (Rule 10). A leaked token burns one bot, never the fleet. A
-    # missing token degrades that one agent to Speda's bot (tagged), never the
-    # channel. See docs/TELEGRAM_ARCHITECTURE.md.
+    # Speda speaks from its own @BotFather bot. The token is a SECRET (config,
+    # keyed by agent_id); the agent's *identity* is its profile (Rule 10).
     #
     # telegram_bot_token is the legacy single-bot alias — treated as Speda's bot
     # when telegram_bot_token_speda is unset, so existing setups keep working.
     telegram_bot_token: str = ""            # from @BotFather — legacy alias for Speda
     telegram_bot_token_speda: str = ""
-    telegram_bot_token_sentinel: str = ""
-    telegram_bot_token_nightcrawler: str = ""
-    telegram_bot_token_ultron: str = ""
-    telegram_bot_token_centurion: str = ""
-    telegram_bot_token_atomix: str = ""
-    telegram_bot_token_orion: str = ""
-    telegram_bot_token_optimus: str = ""
 
     # Ingress mode for inbound chat/media:
     #   webhook — production (Contabo, public HTTPS): setWebhook per bot.
@@ -650,24 +623,8 @@ class Settings(BaseSettings):
     # the names remain one `view` away. 0 enumerates everything.
     memory_directory_collapse_above: int = 8
 
-    # The Legion — worker model override. EMPTY by default (the provider-agnostic
-    # fix): legionnaire models resolve from the parent chat model's provider —
-    # low/medium-effort workers run on the profile's cheap tier for that provider
-    # (Anthropic parent → Haiku, which keeps the old separate-rate-pool benefit;
-    # zai parent → glm-air; …), high-effort workers inherit the parent model.
-    # Set a "provider:model" ref here to pin EVERY worker to one model instead.
-    # Legacy env name SUB_AGENT_MODEL still works via the validation alias.
-    legion_model_override: str = Field(
-        default="",
-        validation_alias=AliasChoices(
-            "legion_model_override", "LEGION_MODEL_OVERRIDE",
-            "sub_agent_model", "SUB_AGENT_MODEL",
-        ),
-    )
-
     # Budget mode — a HARD, enforced frugality switch (not a prompt suggestion):
-    #   - the Legion (Task tool) is not listed at all (impossible to deploy)
-    #   - a strict concise-output directive is injected into the system prompt
+    # a strict concise-output directive is injected into the system prompt.
     # Toggle with BUDGET_MODE=true in .env. Survives restarts. Default ON.
     budget_mode: bool = True
 
@@ -834,29 +791,6 @@ class Settings(BaseSettings):
     # `ports`) is the entire boundary.
     playwright_mcp_url: str = ""
 
-    # ── The Forge peer (app/services/forge_peer.py) ────────────────────────────
-    # The Forge (Mark II) is the standalone execution engine. Speda owns its
-    # lifecycle: the lifespan handler launches ONE child process per agent in
-    # `forge_agents`, and each connects back to WS /agents/ws/<agent_id> as an
-    # external peer. While an agent's peer is online, /chat/<agent_id> is proxied
-    # to it; offline, that agent's in-process profile answers instead (graceful
-    # fallback — the Forge is never a hard dependency). forge_dir empty disables
-    # autostart. The Forge repo ships profiles for every agent listed here.
-    forge_autostart: bool = True
-    forge_dir: str = ""                       # absolute path to the forge-mk1 repo
-    # Comma-separated agents to back with a Forge peer. Each must have a
-    # `<id>/profile.toml` in the Forge repo AND `external_backend = True` on its
-    # in-process profile here. `forge_agent` (singular) is the legacy fallback
-    # used only when `forge_agents` is left blank.
-    forge_agents: str = "optimus,centurion"
-    forge_agent: str = "optimus"
-    # Base agents-WS URL — the launcher appends `/<agent_id>` per peer, so this
-    # must NOT carry a trailing agent segment. A legacy value ending in an agent
-    # id (…/agents/ws/optimus) is tolerated: the launcher strips it.
-    forge_ws_url: str = "ws://127.0.0.1:8000/agents/ws"
-    forge_cell_backend: str = "auto"          # docker | subprocess | auto
-    forge_python: str = ""                    # override interpreter; empty → uv run
-
     # ── News desk (two-tier RSS + NewsData.io) ─────────────────────────────────
     # Tier 1 (RSS) is keyless and always on. Tier 2 (NewsData.io) needs a free
     # key from https://newsdata.io — empty disables the news_deep_dive tool with
@@ -873,89 +807,6 @@ class Settings(BaseSettings):
     news_quota_digest: int = 50           # daily topic digests
     # One escalation per keyword per this many minutes (developing-story guard).
     news_flash_cooldown_min: int = 120
-
-    # ── Orion host operation (system_ops skill) ────────────────────────────────
-    # Orion's ability to operate the HOST Mark VI runs on (log rotation, disk
-    # checks, container inspection). OFF by default — a privileged capability
-    # that must be deliberately enabled on the deployment that wants it. The
-    # write jail confines any file write Orion makes to this root subtree.
-    system_ops_enabled: bool = False
-    system_ops_root: str = str(_DATA_DIR)     # write jail for system_ops file writes
-    system_ops_timeout: int = 60              # hard cap (seconds) per host command
-    # HOST BRIDGE — in prod the backend runs INSIDE a container, so local exec
-    # would only ever see the container. When system_ops_host is set (e.g.
-    # "root@host.docker.internal"), every system_ops action runs over SSH on the
-    # actual host instead: same deny-list, jail, and audit trail — different
-    # namespace. Empty = execute locally (dev / bare-metal deployments). The
-    # private key lives in the data dir (bind-mounted from the host in prod) so
-    # it never enters the repo or the image.
-    system_ops_host: str = ""
-    system_ops_ssh_port: int = 22
-    system_ops_ssh_key: str = str(_DATA_DIR / "host_ops_key")
-
-    # ── Lockdown Protocol ─────────────────────────────────────────────────────
-    # Owner-triggered inbound containment: sealing the host's exposed SSH and raw
-    # app ports behind firewall rules (app/services/lockdown.py). OFF by default
-    # — it edits the host firewall, so a deployment must opt in, and it needs the
-    # system_ops host bridge configured above to reach the host at all.
-    # Engaging reuses house_party_passphrase; standing down never needs one, so
-    # the way out is always available.
-    lockdown_protocol_enabled: bool = False
-
-    # ── Lifeboat Protocol ─────────────────────────────────────────────────────
-    # The host-resource watch and the tiered disk reclamation it authorises
-    # (app/services/lifeboat.py, runbook in docs/LIFEBOAT_PROTOCOL.md). OFF by
-    # default: it runs maintenance shell on the real host, so it needs the
-    # system_ops host bridge configured above to reach it at all, and a
-    # deployment must opt in deliberately.
-    lifeboat_protocol_enabled: bool = False
-    lifeboat_script: str = "/opt/speda/lifeboat.sh"
-    lifeboat_watch_fs: str = "/"
-    # Disk and inode thresholds. `watch` tells the owner and waits for them;
-    # `critical` is the only level at which Orion may run Tier 1 unattended, so
-    # the gap between them is the size of the owner's decision window — keep it
-    # wide enough that a normal week never reaches the upper one.
-    lifeboat_watch_pct: int = 85
-    lifeboat_critical_pct: int = 92
-    # Free space at which reclamation stops (mirrors LIFEBOAT_TARGET_FREE_GB in
-    # the script; set both if you change one).
-    lifeboat_target_free_gb: int = 30
-    # Memory runs hot legitimately — a box with caches doing its job reads high —
-    # so its thresholds sit above the disk ones. Memory never authorises a
-    # lifeboat run: the script reclaims disk, and RAM is a container question.
-    lifeboat_mem_watch_pct: int = 90
-    lifeboat_mem_critical_pct: int = 96
-    # How long an unhealthy host stays quiet after being reported once. Edges are
-    # the rule; this is the single nudge that stops a problem nobody fixed from
-    # being mentioned exactly once and then never again.
-    lifeboat_renotify_hours: int = 24
-
-    # ── Doormat Protocol ──────────────────────────────────────────────────────
-    # Moving the deployment to a new domain: a staged Caddy site, the derived
-    # OAuth/Telegram settings, and the retirement of the old hostname
-    # (app/services/doormat.py, runbook in docs/DOORMAT_PROTOCOL.md). OFF by
-    # default — it edits the host's reverse-proxy config and the deployment .env,
-    # so it needs the system_ops host bridge, and a deployment must opt in.
-    doormat_protocol_enabled: bool = False
-
-    # ── Octavius Protocol ─────────────────────────────────────────────────────
-    # Igor's own database, snapshotted and shipped to the owner's Google Drive
-    # (app/services/octavius.py, runbook in docs/OCTAVIUS_PROTOCOL.md). OFF by
-    # default. Unlike the other host protocols this one needs NO ssh bridge — the
-    # snapshot is taken through Igor's own SQLAlchemy engine — but it does need
-    # Google connected, with the full `drive` scope the Connections flow already
-    # requests.
-    octavius_protocol_enabled: bool = False
-    octavius_drive_folder: str = "Speda Mark VI — Backups"
-    # How many backups to keep. Older ones are TRASHED, not deleted: Drive holds
-    # trash for 30 days, so a retention number typed with one digit too few stays
-    # a mistake the owner can undo.
-    octavius_keep: int = 14
-    # Age at which the newest backup stops counting as protection. Set from the
-    # cron's period, not from taste — at a nightly cadence anything past ~48h
-    # means two runs in a row failed silently.
-    octavius_stale_hours: int = 48
-
 
 settings = Settings()
 

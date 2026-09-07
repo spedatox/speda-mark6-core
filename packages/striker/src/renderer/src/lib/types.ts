@@ -16,36 +16,6 @@ export interface ToolBadge {
   afterChars?: number
 }
 
-/** One step a delegated agent took, for the subagent panel. */
-export interface SubagentStep {
-  kind: 'tool' | 'text'
-  tool?: string
-  input?: unknown
-  result?: string
-  text?: string
-}
-
-/**
- * One delegation a coding peer (Optimus, Centurion) made during a turn.
- *
- * It lives beside the message rather than inside `content` on purpose: a
- * subagent's work is NOT the answer. Streaming its report as prose is what made
- * a delegate's write-up appear as Optimus's own reply, and forwarding its
- * completion as the turn's `done` closed the stream while the peer was still
- * working. This is the channel that lets the work be shown — foldable, and
- * ignorable — without it ever being mistaken for the response.
- */
-export interface SubagentRun {
-  id: string
-  agent: string       // explore | review | general
-  label: string       // what the delegation is FOR, not which specialist ran it
-  prompt?: string
-  running: boolean
-  ok?: boolean
-  report?: string
-  steps: SubagentStep[]
-}
-
 export interface ImageBlock {
   media_type: string
   data: string   // base64, no data: prefix
@@ -74,31 +44,16 @@ export interface FileMeta {
   url: string    // e.g. /files/report.pdf
 }
 
-/** Provenance for a turn the owner did not write — an n8n automation, or
- *  another agent dispatching a task, opening a session. Present only on such
- *  turns; the bubble is attributed to the sender instead of to the owner. */
+/** Provenance for a turn the owner did not write — an n8n automation opening
+ *  a session. Present only on such turns; the bubble is attributed to the
+ *  sender instead of to the owner. */
 export interface TriggerMeta {
-  source: string        // "n8n" | "legion" | "agent" (inter-agent dispatch)
-  label: string         // human name of the sender ("Morning brief", "Dispatch from SENTINEL")
-  job?: string          // "dispatch" | "house party dispatch" | the automation's job
+  source: string        // "n8n"
+  label: string         // human name of the sender ("Morning brief")
+  job?: string          // the automation's job
   automation?: string
-  from_agent?: string   // agent_id of the dispatching agent (source === "agent")
+  from_agent?: string
   output_mode?: string  // "push" | "silent"
-  /** Set when this turn is a background job REPORTING BACK — a legionnaire, or
-   *  an agent that was dispatched to, finishing and waking the agent that sent
-   *  it. Carried on the ASSISTANT message: the reply is the thing to read, and
-   *  this is the receipt folded above it. */
-  report?: ReportMeta
-}
-
-/** What a finished background job brought back, for the folded card. */
-export interface ReportMeta {
-  kind: 'legion' | 'dispatch'
-  from: string          // the legionnaire's role, or the agent dispatched to
-  task: string
-  status: string        // "ok" | "error" | "timeout" | …
-  ticket?: number | null
-  result: string        // the raw findings the reply was written from
 }
 
 export interface ChatMessage {
@@ -106,10 +61,6 @@ export interface ChatMessage {
   role: Role
   content: string
   tools: ToolBadge[]
-  /** Delegations this turn made. Live-only: the backend does not persist them,
-   *  because the report the model actually acted on is already stored as the
-   *  `task` tool's result. */
-  subagents?: SubagentRun[]
   isStreaming: boolean
   isError: boolean
   errorNote?: string  // error banner text — kept SEPARATE from content so an
@@ -168,30 +119,12 @@ export interface QuestionRequest {
   questions?: InteractionQuestion[]
 }
 
-/**
- * An irreversible operation an external peer's safety gate has stopped, waiting
- * on the owner. `action_key` is the exact command or path — shown verbatim and
- * never truncated, because approving a force-push means knowing which branch.
- */
-export interface PendingAsk {
-  ask_id: string
-  agent_id: string
-  tool: string
-  action_key: string
-  reason: string
-  job_id: string
-  chat_id: string | null
-  seconds_left: number
-}
-
 export interface SSEEvent {
-  // `subagent` — a delegate took part of the turn; ChatMain routes it to the
-  // subagent panel, and switched on it before the union admitted it existed.
-  // The owner-only frames Heartbreaker also carries (house_party_auth,
-  // lockdown_auth, skyfall_arm) are deliberately absent: Core has no roster and
-  // no deployment protocols, so nothing here would ever handle them.
+  // The frames the full build also carries (subagent, permission_request,
+  // house_party_auth, lockdown_auth, skyfall_arm) are deliberately absent: Core
+  // has no roster, no peers and no deployment protocols, so the backend never
+  // emits them and nothing here would handle them.
   type: 'start' | 'chunk' | 'tool' | 'tool_result' | 'file' | 'done' | 'error'
-      | 'subagent' | 'permission_request'
   data: unknown
   session_id: number
   request_id: string

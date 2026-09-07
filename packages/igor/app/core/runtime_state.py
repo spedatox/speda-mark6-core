@@ -56,138 +56,11 @@ def set_budget_mode(value: bool) -> bool:
     return bool(value)
 
 
-# ── House Party Protocol ────────────────────────────────────────────────────
-# When engaged, inter-agent dispatch runs every agent at full interactive model
-# grade (instead of the background tier) and broadcast dispatch ("all") becomes
-# available. Toggled by the owner from the comms tray or by an agent via the
-# house_party tool. Default off — it burns Sonnet across the whole roster.
-
-def get_house_party() -> bool:
-    return bool(_load().get("house_party", False))
-
-
-def set_house_party(value: bool) -> bool:
-    state = _load()
-    state["house_party"] = bool(value)
-    _save()
-    logger.info("house_party_set", extra={"engaged": bool(value)})
-    return bool(value)
-
-
-# ── Lockdown Protocol ───────────────────────────────────────────────────────
-# When engaged, the host's exposed inbound ports (SSH, the app's raw port) are
-# sealed by firewall rules — see app/services/lockdown.py, which owns the actual
-# containment and is the only thing that should move this flag. Persisted so a
-# restart mid-incident re-applies the rules rather than silently reopening the
-# ports while every client still shows LOCKDOWN ACTIVE.
-
-def get_lockdown() -> bool:
-    return bool(_load().get("lockdown", False))
-
-
-def set_lockdown(value: bool) -> bool:
-    state = _load()
-    state["lockdown"] = bool(value)
-    _save()
-    logger.warning("lockdown_set", extra={"engaged": bool(value)})
-    return bool(value)
-
-
-# ── Lifeboat Protocol ───────────────────────────────────────────────────────
-# What the owner has last been TOLD about host resource pressure — not what the
-# host currently is. services/lifeboat.py owns the reading; this is only the
-# memory of the last report, which is what turns a poll into an edge.
-#
-# {level, reported_at, pending}. Two slots, like the web watches and for the
-# same reason: a scan parks an escalation as `pending` and n8n promotes it via
-# /host/lifeboat/ack only after the trigger was accepted. Committing at scan
-# time would swallow the escalation whenever the notify call failed, and a
-# disk filling up is precisely the thing that must not be reported once into a
-# dropped connection and then never again.
-
-def get_lifeboat() -> dict:
-    """Last reported pressure level and any parked-but-unacknowledged one."""
-    return dict(_load().get("lifeboat", {}))
-
-
-def set_lifeboat(state: dict) -> dict:
-    store = _load()
-    store["lifeboat"] = dict(state)
-    _save()
-    return dict(state)
-
-
-# ── Doormat Protocol ────────────────────────────────────────────────────────
-# Where a domain change has got to: {phase, target, previous, staged_at,
-# cutover_at}. services/doormat.py owns every transition.
-#
-# Persisted because the protocol spans DAYS, not one turn: the owner stages a
-# domain, goes and edits three third-party consoles, and comes back tomorrow to
-# cut over. A phase held in memory would be lost to the very restart that
-# cutover itself requires, and the protocol would forget that an old domain is
-# still being served and still owes a retirement.
-
-def get_doormat() -> dict:
-    return dict(_load().get("doormat", {}))
-
-
-def set_doormat(state: dict) -> dict:
-    store = _load()
-    store["doormat"] = dict(state)
-    _save()
-    logger.info("doormat_state_set", extra={"phase": state.get("phase") or "idle",
-                                            "target": state.get("target", "")})
-    return dict(state)
-
-
-# ── Skyfall Protocol projects ───────────────────────────────────────────────
-# One entry per launch target the owner has configured: name, description, the
-# endpoint it hits (url/method/body/headers) and how long its countdown runs.
-# services/skyfall.py owns the shape; this is only where they live.
-#
-# Header VALUES are secrets and are treated like portal passwords — stored here,
-# masked by skyfall.mask() on every read that leaves the process, and never put
-# anywhere a model can read them. A project's `Authorization: Bearer …` must not
-# come back out in a chat message.
-#
-# ONLY the owner writes these, through the settings pane. No tool creates or
-# edits a project: an agent that could write the target AND pull the trigger
-# could hit anything, and the countdown would be guarding a URL the owner never
-# chose.
-
-def get_skyfall_projects() -> dict[str, dict]:
-    return dict(_load().get("skyfall_projects", {}))
-
-
-def get_skyfall_project(project_id: str) -> dict:
-    return dict(_load().get("skyfall_projects", {}).get(project_id, {}))
-
-
-def save_skyfall_project(project_id: str, record: dict) -> dict:
-    store = _load()
-    projects = dict(store.get("skyfall_projects", {}))
-    projects[project_id] = dict(record)
-    store["skyfall_projects"] = projects
-    _save()
-    return dict(record)
-
-
-def delete_skyfall_project(project_id: str) -> bool:
-    store = _load()
-    projects = dict(store.get("skyfall_projects", {}))
-    existed = projects.pop(project_id, None) is not None
-    store["skyfall_projects"] = projects
-    _save()
-    logger.info("skyfall_project_deleted",
-                extra={"project": project_id, "existed": existed})
-    return existed
-
-
 # ── Per-agent model overrides ───────────────────────────────────────────────
 # The owner can pin any agent to a specific model ref ("provider:model", bare =
 # Anthropic) from the UI. An override replaces the profile's interactive AND
-# agent-dispatch allocation for that agent (checked first in
-# AgentProfile.allocate_model); tiny background tasks keep their cheap tier.
+# allocation for that agent (checked first in AgentProfile.allocate_model);
+# tiny background tasks keep their cheap tier.
 # Empty/absent = the profile's own policy.
 
 def get_agent_models() -> dict[str, str]:
@@ -254,33 +127,6 @@ def set_voice_override(agent_id: str, override: dict | None) -> None:
     logger.info(
         "voice_override_set",
         extra={"agent_id": agent_id, "has_override": bool(override)},
-    )
-
-
-# ── Per-legionnaire model overrides ─────────────────────────────────────────
-# The owner can pin any Legion worker type (scout, researcher, analyst, judge,
-# general) to a specific model ref. An empty/absent entry leaves that worker on
-# its effort-derived allocation (see legion/roster.resolve_worker_model), which
-# stays provider-agnostic. The deployment-wide LEGION_MODEL_OVERRIDE still wins
-# over everything — it exists to pin the whole corps during an incident.
-
-def get_legion_models() -> dict[str, str]:
-    """worker_id → pinned model ref. Empty = every worker on effort policy."""
-    return dict(_load().get("legion_models", {}))
-
-
-def set_legion_model(worker_id: str, model: str | None) -> None:
-    state = _load()
-    models = dict(state.get("legion_models", {}))
-    if model:
-        models[worker_id] = model
-    else:
-        models.pop(worker_id, None)
-    state["legion_models"] = models
-    _save()
-    logger.info(
-        "legion_model_set",
-        extra={"worker_id": worker_id, "model": model or "(default)"},
     )
 
 
@@ -695,7 +541,7 @@ def set_server_active(server: str, active: bool) -> bool:
 
 # ── Health sync demand ──────────────────────────────────────────────────────
 # A standing request for Speda GO to sync Health Connect NOW, rather than on its
-# next ~4h trickle. Atomix raises it when a turn needs data that describes the
+# next ~4h trickle. The agent raises it when a turn needs data that describes the
 # present (a morning briefing), and the phone clears it by syncing.
 #
 # A flag rather than a push because Speda GO carries no Firebase — there is no

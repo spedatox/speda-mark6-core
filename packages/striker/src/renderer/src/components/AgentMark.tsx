@@ -13,8 +13,8 @@
  *            specular bloom, lit rim, accent glow. Use at 24px and up.
  *   etched — hairline outline only. Use on top of an already-lit surface.
  *
- * Agents with no art (warroom) fall back to a monogram in the same box,
- * so callers never have to branch on which marks exist.
+ * An agent with no art falls back to a monogram in the same box, so callers
+ * never have to branch on which marks exist.
  */
 import { useId } from 'react'
 import { AGENT_MARKS } from '../lib/agentMarks'
@@ -23,7 +23,7 @@ import { agentColor, monogram } from '../lib/agents'
 type Finish = 'flat' | 'glass' | 'etched'
 
 interface Props {
-  /** Backend agent id — 'speda', 'sentinel', … */
+  /** Backend agent id — 'speda'. */
   agentId: string
   /** Rendered box in px. Square. */
   size?: number
@@ -42,9 +42,6 @@ export default function AgentMark({
   const uid = useId().replace(/[:]/g, '')
   const d = AGENT_MARKS[agentId]
   const accent = color ?? agentColor(agentId)
-  // Optimus's mark is the real Autobot-shield vector art, exported with
-  // fill-rule="evenodd" — its subpaths aren't wound for the nonzero default.
-  const fillRule = agentId === 'optimus' ? 'evenodd' as const : undefined
   const a11y = title
     ? { role: 'img' as const, 'aria-label': title }
     : { 'aria-hidden': true as const, focusable: 'false' as const }
@@ -109,17 +106,13 @@ export default function AgentMark({
         </filter>
       </defs>
       <g filter={`url(#${uid}-lift)`}>
-        <path d={d} fill={accent} fillOpacity={0.92} fillRule={fillRule} />
+        <path d={d} fill={accent} fillOpacity={0.92} />
         <g clipPath={`url(#${uid}-clip)`}>
           <rect width="100" height="100" fill={`url(#${uid}-sheen)`} />
           <rect width="100" height="100" fill={`url(#${uid}-bloom)`} />
         </g>
-        {/* Optimus's trace carries far more subpaths than the abstract marks —
-            stroking every one of them turns the lit rim into contour clutter. */}
-        {agentId !== 'optimus' && (
-          <path d={d} fill="none" stroke="#fff" strokeOpacity={0.38}
-                strokeWidth={0.9} strokeLinejoin="round" />
-        )}
+        <path d={d} fill="none" stroke="#fff" strokeOpacity={0.38}
+              strokeWidth={0.9} strokeLinejoin="round" />
       </g>
     </svg>
   )

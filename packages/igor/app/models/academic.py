@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 """
-Ultron's academic tables — the schedule the watch renders and the attendance
+the academic desk's academic tables — the schedule the watch renders and the attendance
 ledger it writes back to.
 
 See docs/ULTRON_WEAR.md for the whole pipeline (watch ⇄ Igor ⇄ n8n ⇄ FCM).

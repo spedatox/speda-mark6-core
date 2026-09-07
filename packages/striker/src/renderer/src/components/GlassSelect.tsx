@@ -41,7 +41,7 @@ export default function GlassSelect({ value, options, onChange, tint, active = f
   /** Whether the trigger renders in its tinted (pinned/engaged) state. */
   active?: boolean
   title?: string
-  /** Full-size liquid-glass trigger (the war-room ROSTER CORES window) rather
+  /** Full-size liquid-glass trigger rather
    *  than the 18px compact bar used on dense boards. */
   large?: boolean
 }) {
@@ -71,7 +71,7 @@ export default function GlassSelect({ value, options, onChange, tint, active = f
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { e.stopPropagation(); setOpen(false) }
     }
-    // Capture phase so an overlay's own Esc handler (war room minimize) never
+    // Capture phase so an overlay's own Esc handler never
     // fires while the dropdown is the topmost layer.
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)

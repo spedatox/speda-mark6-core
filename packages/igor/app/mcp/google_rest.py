@@ -40,7 +40,7 @@ _TASKS = "https://tasks.googleapis.com/tasks/v1"
 
 
 # ── Shared access-token cache ─────────────────────────────────────────────────
-# Lives in services/google_auth.py now: a SERVICE (the Octavius Protocol's Drive
+# Lives in services/google_auth.py now: a SERVICE (a backup's Drive
 # upload) needs a token too, and services may not import from `mcp/` — that is
 # the wrong way down the layering. Aliased here so every call site below, and
 # routers/connections.py clearing the cache on disconnect, stay unchanged.

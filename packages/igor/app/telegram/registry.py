@@ -2,14 +2,14 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 """
-TelegramBotRegistry — the only entity that knows which bot belongs to which
-agent. Built once in the lifespan handler from the per-agent tokens in config.
+TelegramBotRegistry — the bot the agent speaks from. Built once in the lifespan
+handler from the token in config.
 
-Delivery goes through `bot_for(agent_id)`, which applies the fallback chain:
-the agent's own started bot → Speda's bot (message prefixed so attribution
-survives) → None (the caller logs and stores a Notification row instead). A
-missing token or an unpaired bot degrades one agent's voice; it never drops a
-message and never takes down the channel.
+Core has one agent, so this is one bot, but the registry shape is kept rather
+than collapsed to a bare client: delivery still goes through `resolve(agent_id)`,
+which returns the started bot or None (the caller logs and stores a Notification
+row instead), so a missing token degrades the voice without dropping a message
+or taking down the channel.
 """
 
 import asyncio
@@ -21,29 +21,10 @@ from app.telegram.client import TelegramBot
 
 logger = logging.getLogger(__name__)
 
-# agent_id → config attribute holding its bot token. Only agents with a
-# Telegram presence appear here; the profile still gates via telegram_enabled.
+# agent_id → config attribute holding its bot token. The profile still gates
+# via telegram_enabled.
 _TOKEN_ATTRS: dict[str, str] = {
     "speda": "telegram_bot_token_speda",
-    "sentinel": "telegram_bot_token_sentinel",
-    "nightcrawler": "telegram_bot_token_nightcrawler",
-    "ultron": "telegram_bot_token_ultron",
-    "centurion": "telegram_bot_token_centurion",
-    "atomix": "telegram_bot_token_atomix",
-    "orion": "telegram_bot_token_orion",
-    "optimus": "telegram_bot_token_optimus",
-}
-
-# Human tag prepended when an agent's message rides Speda's bot (fallback), so
-# the owner still sees who it's from.
-_TAG = {
-    "sentinel": "🛡️ Sentinel",
-    "nightcrawler": "🕸️ NightCrawler",
-    "ultron": "📚 Ultron",
-    "centurion": "🔐 Centurion",
-    "atomix": "❤️ Atomix",
-    "orion": "🛰️ Orion",
-    "optimus": "⚙️ Optimus",
 }
 
 

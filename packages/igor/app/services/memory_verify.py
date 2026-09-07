@@ -315,7 +315,7 @@ _STALE_REFERENCES: tuple[tuple[str, str], str] = (
 def check_stale_references(path: str, text: str, spec: DocumentSpec) -> list[Finding]:
     """Operational claims that were true once and are acted on as if still true."""
     findings = []
-    if spec.kind not in (LEDGER, SYSTEM) or spec.owner_agent != "orion":
+    if spec.kind not in (LEDGER, SYSTEM):
         return findings
     for (needle, why), severity in _STALE_REFERENCES:
         idx = text.find(needle)

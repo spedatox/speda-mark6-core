@@ -44,16 +44,11 @@ const TOOL_STATUS: Record<string, string> = {
   WebSearch:              'Searching the web',
   web_fetch:              'Reading the page',
   WebFetch:               'Reading the page',
-  Task:                   'Deploying the Legion',
-  legion_status:          'Checking on the Legion',
-  // Forge (Optimus) execution + codebase-graph tools.
+  // Sandbox execution.
   run_command:            'Running a command',
   read_file:              'Reading a file',
   write_file:             'Writing a file',
   edit_file:              'Editing a file',
-  graph_query:            'Searching the codebase graph',
-  graph_path:             'Tracing the codebase graph',
-  graph_overview:         'Mapping the codebase graph',
 }
 
 // Tool names that count as "web search" for the disclosure label
@@ -133,7 +128,7 @@ function shortPath(p: string): string {
  *
  * `running` picks the present tense, because voice mode's activity window shows
  * a step WHILE it happens and "Searched" under a spinner reads as already-done.
- * `_t` is accepted and unused: Heartbreaker's copy takes its verbs from the
+ * `_t` is accepted and unused: the full build's copy takes its verbs from the
  * locale dictionary, and matching the signature is what lets VoiceActivity be
  * the same file in both clients rather than a fork per brand.
  */

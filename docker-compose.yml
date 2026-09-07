@@ -40,23 +40,11 @@ services:
       # exists, so the URL resolves.
       PLAYWRIGHT_MCP_URL: http://playwright-mcp:8931/mcp
       SANDBOX_URL: http://sandbox:9000
-      # Hisar over the container network, never the public hostname — this is
-      # an internal call and should not leave the box. HISAR_MACHINE_TOKEN is
-      # NOT set here: it is a secret and lives in packages/igor/.env, holding
-      # the same value Hisar's own env file gives the hisar service.
-      HISAR_BASE_URL: http://hisar:8600
     volumes:
       - /tmp/speda_outputs:/tmp/speda_outputs
       # Host dir holding speda.db → container's data dir. A directory (not the
       # bare file) so WAL's speda.db-wal / speda.db-shm sidecars persist too.
-      # Also carries the system_ops SSH key (host_ops_key) + known_hosts.
       - /opt/speda:/root/.speda
-    # system_ops host bridge: lets the container resolve the real host as
-    # host.docker.internal so Orion/Optimus can SSH out for server maintenance.
-    # On Linux this needs the explicit host-gateway mapping (it is automatic only
-    # on Docker Desktop). Harmless when system_ops_host is unset.
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   # The automation organ — n8n owns ALL scheduling and polling (CLAUDE.md).
   # SPEDA composes workflows over its REST API; fired watchers call back into
@@ -190,31 +178,6 @@ services:
     security_opt:
       - no-new-privileges:true
     restart: unless-stopped
-
-  # H.İ.S.A.R. — the owner's file vault, served at hisar.$DOMAIN.
-  # Deployed from a sibling clone of spedatox/hisar-mk1 (option (b) of the
-  # placement plan). Only starts with `--profile hisar`, which deploy.sh enables
-  # when ../hisar-mk1/.env exists — so a server without Hisar is unaffected.
-  hisar:
-    build: ../hisar-mk1
-    profiles: ["hisar"]
-    restart: unless-stopped
-    expose:
-      - "8600"
-    # Hisar's own secrets live with Hisar, never in Igor's .env.
-    env_file:
-      - ../hisar-mk1/.env
-    environment:
-      # Container-side paths — these MUST outrank the .env, whose
-      # HISAR_SANDBOX_ROOT is the *host* path of the same directory.
-      HISAR_SANDBOX_ROOT: /vault
-      HISAR_STATIC_DIR: /app/dist
-    volumes:
-      # The vault is the only writable mount. Forge writes into
-      # Forge/workspaces of this same host directory, directly.
-      - /opt/hisar/vault:/vault
-    security_opt:
-      - no-new-privileges:true
 
   # Reverse proxy + automatic HTTPS for your domain. Only starts when you run
   # with `--profile domain` and DOMAIN is set (deploy.sh does this for you).

@@ -23,7 +23,7 @@
         240,
         300
       ],
-      "notes": "Hourly, offset to :20 so it does not land on the same minute as the briefings (:00) or Orion's audit (04:00) and queue behind them.\n\nHourly rather than every few minutes because the queue's own backoff is measured in minutes (2, 15, 60): a job that just failed is not due yet, so checking more often only costs HTTP calls. Hourly rather than daily because a failed session title should be recoverable the same afternoon, not tomorrow.\n\nThis is a plain HTTP call with no model behind it — the cheap-probe rule (README) is satisfied: the poll is free, and only a job that actually needs running spends anything."
+      "notes": "Hourly, offset to :20 so it does not land on the same minute as the briefings (:00) or the memory audit (04:00) and queue behind them.\n\nHourly rather than every few minutes because the queue's own backoff is measured in minutes (2, 15, 60): a job that just failed is not due yet, so checking more often only costs HTTP calls. Hourly rather than daily because a failed session title should be recoverable the same afternoon, not tomorrow.\n\nThis is a plain HTTP call with no model behind it — the cheap-probe rule (README) is satisfied: the poll is free, and only a job that actually needs running spends anything."
     },
     {
       "parameters": {

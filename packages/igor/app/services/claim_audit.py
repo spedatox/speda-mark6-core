@@ -7,10 +7,9 @@ Post-turn claim audit — did the agent say it DID something without doing it?
 `prompts/core/05_output_policy.md` already carries the rule ("Past tense is a
 claim, and needs a receipt"), every profile loads that file, and the models
 violate it anyway: in the six days from 2026-07-29, 11 of 22 assistant messages
-asserting a side effect ran ZERO tools. Five of those announced "House Party
-Protocol engaged" while the flag was false the whole time. Advisory prompt text
-has therefore already been tried and has already failed, which is the entire
-reason this module is mechanical instead of another paragraph of prompt.
+asserting a side effect ran ZERO tools. Advisory prompt text has therefore
+already been tried and has already failed, which is the entire reason this
+module is mechanical instead of another paragraph of prompt.
 
 What it does NOT do, deliberately:
   - It does not block, rewrite, or re-run the turn. It runs as post-turn
@@ -27,9 +26,9 @@ so nothing can have been recorded. A turn that called some tool is left alone
 even if it called the wrong one; catching those needs judgement this cannot have.
 
 Calibrated against all 1,416 assistant messages since 2026-07-01: it flags 15
-(1.1% of turns), of which ~10 are genuine — the five House Party announcements,
-Atomix claiming a PDF it never generated and a protocol "logged to sessions.md",
-and Orion filing four projects "in projects.md" with no tool call. The remaining
+(1.1% of turns), of which ~10 are genuine — the agent claiming a PDF it never
+generated, a protocol "logged to sessions.md", and four projects filed "in
+projects.md" with no tool call. The remaining
 ~5 are long-form prose where the phrase occurs descriptively. Roughly two thirds
 precision, which is the trade accepted for a signal that is free to leave on. If
 that ratio drifts, tighten _CLAIM_PATTERNS — do not widen it.

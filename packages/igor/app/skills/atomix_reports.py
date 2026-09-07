@@ -2,12 +2,12 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 """
-Atomix's daily training-program document — a fixed, designed HTML/CSS template
+the health desk's daily training-program document — a fixed, designed HTML/CSS template
 (app/templates/reports/atomix_daily_program_template.html) filled with the
 session's content and rendered straight to PDF for delivery as a downloadable
 (and Telegram-sendable) file.
 
-The design (Barlow Condensed masthead, the Atomix mark, the dossier grid) is
+The design (Barlow Condensed masthead, the the health desk mark, the dossier grid) is
 locked. Claude never authors HTML for this document — it only supplies the
 session fields below; this module does plain marker-based substitution
 (no Jinja2 — mirrors the literal-token approach already used in
@@ -154,11 +154,10 @@ class GenerateDailyTrainingProgramSkill(Skill):
     name = "generate_daily_training_program"
     deferred = True
     search_keywords = "workout print pdf training program daily gym session document antrenman program yazdır cikti"
-    restricted_to = frozenset({"atomix"})
     read_only = False
     description = (
         "Renders today's already-decided training session — the goal, warm-up, main-work "
-        "table, finisher, and safety rules — into Atomix's branded daily program PDF and "
+        "table, finisher, and safety rules — into the health desk's branded daily program PDF and "
         "delivers it as a downloadable file (and, if the owner also wants Telegram, the "
         "file to hand send_telegram_file). Use this ONLY after you have actually worked out "
         "today's session per the Training Protocol (read the session ledger, checked "
@@ -168,7 +167,7 @@ class GenerateDailyTrainingProgramSkill(Skill):
         "(generic reports, unbranded) or write an ad hoc script in the sandbox to build a PDF "
         "yourself — both bypass the locked design and produce a different-looking, "
         "sometimes logo-less file every time, which is exactly the inconsistency this tool "
-        "exists to prevent. The visual design (fonts, layout, the Atomix mark) is locked; "
+        "exists to prevent. The visual design (fonts, layout, the the health desk mark) is locked; "
         "you only ever supply the session's content fields below — never hand-write or paste "
         "raw HTML/CSS yourself. Returns confirmation that the PDF was generated and "
         "delivered as a download card; do not paste its path or contents back to him."

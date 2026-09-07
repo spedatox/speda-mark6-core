@@ -27,7 +27,7 @@ active agent's accent colour.
     },
     { "date": "2026-07-01", "events": [] },
     { "date": "2026-07-02", "events": [
-        { "time": "11:00", "title": "1:1 with Sentinel", "color": "#d99c44" }
+        { "time": "11:00", "title": "1:1 with Deniz", "color": "#d99c44" }
     ] }
   ]
 }

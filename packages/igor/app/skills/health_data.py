@@ -6,7 +6,7 @@ Health desk skill (Tier 1) — the owner's biometrics, read-only.
 
 One tool over the health sync pipe (docs/ATOMIX_HEALTH_SYNC.md): the phone
 collects via Health Connect and POSTs to /health/ingest; this reads what landed.
-Primarily Atomix's, but deliberately NOT restricted_to={"atomix"} — "ask Atomix
+Primarily the health desk's, but deliberately NOT restricted_to={"speda"} — "ask the health desk
 how I slept" shouldn't cost a dispatch round-trip just to read a number, and the
 roster is trusted in a single-owner system.
 
@@ -139,7 +139,7 @@ class HealthDataSkill(Skill):
         "ground health coaching instead of generic advice — check the data before "
         "asserting anything about how they have been sleeping or moving. Do NOT "
         "use it for medical diagnosis, for anyone else's health, or for server and "
-        "system health (that is Orion's system_ops domain, an entirely different "
+        "system health (an entirely different "
         "meaning of the word). Returns compact JSON: per-day aggregates for the "
         "requested metrics and range, plus a period-over-period trend comparison "
         "against the immediately preceding window; pass granularity='raw' for "

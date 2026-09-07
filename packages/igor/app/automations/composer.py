@@ -177,7 +177,7 @@ return fire ? [{{ json: {{ changed: true, matched: lookFor || null }} }}] : [];
 def _day_flags_code(flags: list[dict]) -> str:
     """JS computing whether today and tomorrow carry each declared day-flag.
 
-    THIS IS THE ONE THING A MODEL MAY NOT WORK OUT FOR ITSELF. Atomix once told
+    THIS IS THE ONE THING A MODEL MAY NOT WORK OUT FOR ITSELF. A briefing once told
     the owner "you trained today, tomorrow is a rest day" on a Tuesday, having
     derived it from a prose description of his gym schedule. A calendar never
     gets that wrong, so the calendar settles it here and the model is handed the

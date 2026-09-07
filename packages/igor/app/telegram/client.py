@@ -138,7 +138,7 @@ class TelegramBot:
     async def send_message(self, text: str, chat_id: str | None = None, prefix: str = "") -> bool:
         """Deliver text to the owner (chunked at 4096). Tries Telegram-HTML for
         formatting, falls back to plain text so a formatting glitch never drops
-        the message. `prefix` tags fallback-chain sends (e.g. '[Sentinel] ')."""
+        the message. `prefix` tags a fallback-chain send."""
         chat = chat_id or get_telegram_owner_id()
         if not chat:
             logger.warning("telegram_no_owner", extra={"agent_id": self.agent_id})

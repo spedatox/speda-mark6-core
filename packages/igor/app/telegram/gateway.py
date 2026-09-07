@@ -7,10 +7,9 @@ TelegramGateway — inbound update → orchestrator run → rendered reply.
 This is the ONLY module in the Telegram package with request logic (the webhook
 router is dumb: it validates the secret, acks 200, and hands off here). A
 Telegram turn is a NORMAL orchestrator turn — triggered_by="user",
-output_mode="respond" — so persistence, memory extraction, compaction, and the
-Optimus external-proxy branch all work exactly as they do for the desktop chat
-router. The only differences are the transport (renderer.py) and a sticky,
-channel-scoped session.
+output_mode="respond" — so persistence, memory extraction and compaction all
+work exactly as they do for the desktop chat router. The only differences are
+the transport (renderer.py) and a sticky, channel-scoped session.
 """
 
 import hmac
@@ -19,7 +18,6 @@ import uuid
 
 from app.config import settings
 from app.core.context import AgentContext
-from app.core.dispatch import BG_COMMAND, bg_ack
 from app.core.runtime_state import get_telegram_owner_id
 from app.core.surface import annotate_last_user, telegram_context
 from app.database import AsyncSessionLocal
@@ -33,21 +31,14 @@ _OWNER_USER_ID = 1  # single-user system (CLAUDE.md)
 
 
 class TelegramGateway:
-    def __init__(self, orchestrator, session_manager, profiles, bots, ws_manager, agent_proxy,
-                 dispatcher=None, turns=None) -> None:
+    def __init__(self, orchestrator, session_manager, profiles, bots,
+                 turns=None) -> None:
         self._orchestrator = orchestrator
         self._sessions = session_manager
         self._profiles = profiles
         self._bots = bots                 # TelegramBotRegistry
-        self._ws_manager = ws_manager
-        self._agent_proxy = agent_proxy
-        # Optional: only /bg needs it. Kept optional rather than required so a
-        # caller wiring the gateway before the dispatcher exists (or a test
-        # double) does not have to fabricate one just to construct this class.
-        self._dispatcher = dispatcher
-        # The turn registry, for /break (cancel the in-flight turn) and for
-        # steering (route a mid-turn message into a running external turn rather
-        # than starting a second one). Optional for the same reason as above.
+        # The turn registry, for /break (cancel the in-flight turn). Optional
+        # so a test double does not have to fabricate one to construct this.
         self._turns = turns
         # De-dupe across webhook retries AND poll/webhook overlap: last update_id
         # seen per (agent). Poll also persists a watermark; this is the in-process
@@ -126,46 +117,6 @@ class TelegramGateway:
             await bot.send_message("🆕 Started a fresh conversation.", chat_id=chat_id)
             return
 
-        # 4b. /bg <task> — background-dispatch THIS agent, no orchestrator turn
-        # and no other agent's judgment call in between. Owner identity is
-        # already confirmed above (step 3), which is exactly the authority
-        # `dispatch_agent` normally borrows from whichever agent calls it — here
-        # the owner IS the caller, so `from_agent == to_agent` is correct, not a
-        # loop risk (allow_self exists in AgentDispatcher for precisely this).
-        # The command, the owner-facing reply, and the branch on success/refusal
-        # all live in app.core.dispatch, shared with the web chat router so the
-        # two surfaces cannot drift.
-        if text.startswith(BG_COMMAND):
-            task_text = text[len(BG_COMMAND):].strip()
-            if not task_text:
-                await bot.send_message(
-                    f"Usage: {BG_COMMAND} <what to do>", chat_id=chat_id)
-                return
-            if self._dispatcher is None:
-                await bot.send_message(
-                    "Background dispatch isn't available.", chat_id=chat_id)
-                return
-            async with AsyncSessionLocal() as db:
-                profile = self._profiles.get(agent_id)
-                session = await self._sessions.get_or_create(
-                    db=db, user_id=_OWNER_USER_ID, triggered_by="user",
-                    model_used=profile.allocate_telegram_model() if profile else "",
-                    agent_id=agent_id, channel="telegram",
-                )
-                # The command IS the owner's turn in this conversation, so it is
-                # persisted like any other — the finished report threads back
-                # into the same session (origin_session_id below).
-                await self._sessions.save_message(
-                    db, session.id, "user", [{"type": "text", "text": text}])
-                session_id = session.id
-            outcome = await self._dispatcher.spawn(
-                from_agent=agent_id, to_agent=agent_id, task=task_text,
-                user_id=_OWNER_USER_ID, request_id=str(uuid.uuid4()),
-                origin_session_id=session_id, allow_self=True,
-            )
-            await bot.send_message(bg_ack(outcome), chat_id=chat_id)
-            return
-
         # 4b2. /compact — fold older turns into a rolling summary right now,
         # ignoring the token threshold, and reply with a visible confirmation.
         # Shared with the web chat router via app.services.compaction.
@@ -198,9 +149,7 @@ class TelegramGateway:
             return
 
         # 4c. /break — stop this agent's in-flight turn at its next SAFE point.
-        # Cancelling the turn unwinds its stream; for an external agent that
-        # sends chat_cancel to the peer, whose engine aborts at a loop boundary,
-        # never mid-tool (forge/warden/engine.py). Nothing running is a no-op the
+        # Cancelling the turn unwinds its stream. Nothing running is a no-op the
         # owner is told about, not an error.
         if text.startswith("/break"):
             sticky = await self._sticky_session_id(agent_id, profile)
@@ -213,21 +162,6 @@ class TelegramGateway:
                 await self._turns.cancel(t["request_id"])
             await bot.send_message("🛑 Stopping at the next safe point.", chat_id=chat_id)
             return
-
-        # 4d. A plain message that arrives WHILE a turn is already running is
-        # steering, not a new turn: hand it to the running turn so its engine
-        # reads it at the next safe boundary (forge/warden/inbox.py) instead of
-        # making the owner wait or starting a second turn over the same session.
-        # Only an EXTERNAL turn can be steered — the inbox lives in the Forge
-        # engine, not the in-process orchestrator — so an in-process agent falls
-        # through and behaves exactly as before.
-        if text and not text.startswith("/") and getattr(profile, "external_backend", False):
-            sticky = await self._sticky_session_id(agent_id, profile)
-            active = (self._turns.active(agent_id=agent_id, session_id=sticky)
-                      if (self._turns is not None and sticky is not None) else [])
-            if active and await self._agent_proxy.steer(active[0]["request_id"], text):
-                await bot.send_message("↪️ Added to what I'm working on.", chat_id=chat_id)
-                return
 
         # 5. Inbound media (T3): voice → STT; photo/document → attachments text.
         user_content, note = await self._build_user_content(bot, message, text)
@@ -272,17 +206,7 @@ class TelegramGateway:
             )
             context.extra["active_servers"] = self._sessions.get_loaded_servers(session.id)
 
-            # Optimus (or any external_backend agent) proxies to its peer when
-            # connected — same branch routers/chat.py takes. Both yield SSEEvents.
-            use_external = (
-                profile.external_backend
-                and self._ws_manager.is_connected(profile.agent_id)
-            )
-            engine = (
-                self._agent_proxy.run(context)
-                if use_external
-                else self._orchestrator.run(context)
-            )
+            engine = self._orchestrator.run(context)
 
             reply = await render_stream(engine, bot, chat_id, request_id)
             if reply:

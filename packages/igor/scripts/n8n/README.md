@@ -24,16 +24,10 @@ majority of runs.
 | `outlook_watch.json` | The same, in the **Microsoft 365 / university** mailbox | school mail actually arrives |
 | `web_publish_watch.json` | New lines appearing on pages you list | something is published |
 | `service_health_check.json` | Services going down / coming back | a service changes state |
-| `lifeboat_watch.json` | The host running out of disk, inodes or RAM | the pressure level actually changes |
-| `octavius_backup.json` | *(nothing — it backs up)* | the backup **fails**; a successful one costs nothing |
 | `persistent_reminders.json` | *(nothing — it asks)* | never; asking and answering are free |
 | `memory_audit.json` | *(nothing — it schedules)* | **once a night, by design** |
 | `task_queue_drain.json` | Post-turn work that failed or was orphaned | only when a job actually needs re-running |
 | `ultron_wear_attendance.json` | A lecture ending unanswered | never; it pushes to the watch directly |
-
-`octavius_backup.json` inverts the rule rather than breaking it: the scheduled
-half IS the work — Igor snapshots, verifies and uploads the database itself, for
-zero tokens — and the Gate spends a turn only when that FAILS.
 
 `memory_audit.json` is the deliberate exception: you are asking an agent to go
 and do work, so of course it costs a turn. Keep watchers out of it. Anything
@@ -42,12 +36,12 @@ where checking is free.
 
 **Scheduled briefings no longer live here.** They were a hand-edited JS array in
 `daily_briefings.json`; they are now rows in the `automations` table, each with
-its own workflow and its own real cron, created and edited from Heartbreaker
-under Settings → Automations. `scripts/migrate_briefings.py` performed that move
+its own workflow and its own real cron, created and edited from the desktop
+client under Settings → Automations. `scripts/migrate_briefings.py` performed that move
 and documents it. Add a new briefing from the UI, not by importing a template.
 
-**`memory_audit.json` is not optional.** It is the only thing that fires Orion's
-nightly custodian pass (`docs/MEMORY_ARCHITECTURE.md` §3.3). Without it imported
+**`memory_audit.json` is not optional.** It is the only thing that fires the
+nightly custodian pass. Without it imported
 and active, the boundary sweep, demotions, dedup, compression, observation
 consolidation and audit report simply never run — memory drifts and nothing
 notices. It has no config node to edit; import and activate it. There is a
@@ -62,8 +56,7 @@ so an unimported workflow does not go unnoticed forever.
 1. **Import** — n8n ▸ Workflows ▸ Import from File.
 2. **Edit the one config node.** Each workflow has exactly one, and its name
    tells you (`Mail list`, `Domain list`, `Watch list`, `Reminder list`, `Briefing list`,
-   `Service list`). `lifeboat_watch.json` also has none — its thresholds live in
-   Igor's config, not in the workflow, so there is only ever one copy of them. Everything is a plain JS array of objects at the top of the
+   `Service list`). Everything is a plain JS array of objects at the top of the
    node; the comment block above it documents every field. (`memory_audit.json`
    is the exception — it has no config node. Import and activate.)
 3. **Activate.** All of them are safe to activate with an empty list — they do

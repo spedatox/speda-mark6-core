@@ -65,17 +65,11 @@ async def list_automations(db: AsyncSession = Depends(get_db)):
 
 @router.get("/automations/agents")
 async def automation_agents(request: Request):
-    """The roster the create/edit form's agent picker offers.
-
-    Session-scope aliases are filtered out the same way the model matrix filters
-    them (routers/agents.py): War Room mirrors Speda's brain and is a place a
-    conversation happens, not something that should own a 08:00 briefing.
-    """
+    """The agents the create/edit form's picker offers — on Core, one."""
     return {
         "agents": [
             {"agent_id": p.agent_id, "name": p.name, "domain": p.domain}
             for p in request.app.state.profiles.roster()
-            if p.dispatch_target
         ]
     }
 

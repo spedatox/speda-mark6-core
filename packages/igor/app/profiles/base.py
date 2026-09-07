@@ -38,47 +38,21 @@ class AgentProfile(ABC):
     # Declarative tool allowlist (Rule 5/10): which skills/MCP servers/toolsets
     # this agent may use. None = no restriction (sees the full registry). The
     # CapabilityRegistry applies this filter — the profile only declares it.
-    # Filter wiring lands in Phase 3; declaring it now is harmless.
     tool_allowlist: list[str] | None = None
-
-    # Whether other agents may dispatch tasks TO this profile. False for
-    # aliases that exist only to scope sessions (e.g. the war-room command
-    # channel) — they answer /chat requests but never appear as a target in
-    # the dispatch tool schema.
-    dispatch_target: bool = True
-
-    # True for agents whose real engine is a standalone peer reached over the
-    # agents WebSocket (Optimus). While the peer is connected, /chat turns are
-    # proxied to it (core/external_proxy.py) and dispatches route external-first;
-    # when it is offline, this in-process profile answers as the fallback.
-    external_backend: bool = False
 
     # Whether this agent has a Telegram presence (its own bot). Identity only —
     # the token itself is a secret in config, keyed by agent_id (Rule 10 split).
-    # Session-scope aliases that never notify (e.g. the war-room command channel)
-    # set this False so no bot is built for them. See docs/TELEGRAM_ARCHITECTURE.md.
     telegram_enabled: bool = True
 
     # Episodic session recall scope (Rule 10: identity decision lives here, not
-    # in the skill). "own" — a new session sees only THIS agent's recent session
-    # recaps (specialists stay in their lane). "all" — sees every agent's recaps,
-    # tagged by agent_id; the orchestrator profile (Speda) overrides to this so
-    # it has cross-agent situational awareness.
+    # in the skill). Core has one agent, so "own" and "all" coincide; the flag
+    # stays because the recall query is written against it.
     episodic_recall_scope: Literal["own", "all"] = "own"
-
-    # Which side of the House Party Protocol this agent is on while it is
-    # engaged: True = MISSION COMMANDER (plans the objective, dispatches the
-    # roster, debriefs the owner), False = OPERATIVE (takes dispatched work,
-    # including work outside its usual domain). The orchestrator picks the
-    # protocol block off this flag — identity decision, so it lives here and not
-    # as an agent_id comparison in core (Rule 10). Speda sets it True, and its
-    # war-room session alias inherits it.
-    house_party_commander: bool = False
 
     name: str
 
     # The agent's own model iteration — "Mark I", "Mark II", … Each agent is
-    # versioned independently of the Mark VI system it belongs to: Sentinel is
+    # versioned independently of the Mark VI system it belongs to. Derived from
     # on Mark II while Speda is on Mark VI. Derived from the identity prompt's
     # `Iteration:` line (prompts.loader.derive_iteration), never hardcoded —
     # identity lives in the prompt, the profile only reads it (Rule 10).
@@ -117,7 +91,7 @@ class AgentProfile(ABC):
     @property
     def signed_name(self) -> str:
         """
-        How this agent signs the artifacts it leaves behind: "Sentinel Mark II".
+        How this agent signs the artifacts it leaves behind: "Speda Mark VI".
         Speda's display name already carries its iteration ("Speda Mark VI"), so
         the mark is never appended twice; an agent with no Iteration line signs
         with its bare name rather than a wrong one.
@@ -207,7 +181,7 @@ class AgentProfile(ABC):
 
     def background_model(self, active_model_ref: str) -> str:
         """
-        Cheap model for background work (titles, recaps, compaction, Legion
+        Cheap model for background work (titles, recaps, compaction,
         pre-filters) — ALWAYS on the provider the owner actually chose.
 
         `active_model_ref` is the model this turn is genuinely running on, which
@@ -220,7 +194,7 @@ class AgentProfile(ABC):
 
         The old version keyed off a hardcoded provider tuple and fell back to
         Anthropic Haiku for anything it didn't recognise, so an agent routed to
-        a provider outside that list had every title, recap and Legion
+        a provider outside that list had every title and recap
         pre-filter quietly billed to Anthropic. Nothing here reaches for
         Anthropic unless the resolved model IS Anthropic.
         """

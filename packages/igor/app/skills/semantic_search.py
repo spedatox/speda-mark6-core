@@ -236,7 +236,7 @@ class SemanticSearchSkill(Skill):
                 "type": "string",
                 "description": (
                     "Optional: only exchanges from this agent's conversations "
-                    "(speda, sentinel, atomix, …). Leave unset to search the whole roster."
+                    "Leave unset to search everything."
                 ),
             },
             "context_window": {

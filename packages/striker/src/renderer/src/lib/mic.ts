@@ -18,7 +18,7 @@
  *
  *   - PRE-ROLL. Speech is detected only once it is already loud, so by the time
  *     the gate opens the first consonant is gone. A rolling pre-buffer is kept
- *     at all times and prepended to every utterance; without it "Sentinel" is
+ *     at all times and prepended to every utterance; without it "Speda" is
  *     transcribed as "entinel".
  *   - Capture runs in an AudioWorklet, off the main thread. Voice mode drives a
  *     WebGL orb at 60fps, and that is exactly the load under which a main-thread

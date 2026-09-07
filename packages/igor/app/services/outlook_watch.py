@@ -7,7 +7,7 @@ Outlook watch — the cheap, LLM-free half of "tell me when the university write
 The exact posture of services/mail_watch.py, pointed at the owner's Microsoft 365
 mailbox instead of Gmail: n8n polls `POST /outlook/watch/scan` on a cron, the scan
 is one Graph request plus a strict sender-domain check, and the expensive half —
-`POST /trigger/ultron` — fires only on a real hit. A quiet week costs nothing but
+`POST /trigger/speda` — fires only on a real hit. A quiet week costs nothing but
 HTTP.
 
 Two things differ from the Gmail probe, both forced by Graph rather than chosen:

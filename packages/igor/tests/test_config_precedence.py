@@ -75,11 +75,11 @@ def test_deployment_owned_keys_are_never_overridable(settings_cls, monkeypatch):
 
 def test_managed_values_are_coerced_to_their_declared_type(settings_cls):
     """The file is all strings; bools and ints must still land as bools and ints."""
-    cfg = settings_cls('BUDGET_MODE="false"\nSYSTEM_OPS_TIMEOUT="90"\n')
+    cfg = settings_cls('BUDGET_MODE="false"\nNEWS_RETENTION_DAYS="90"\n')
     s = cfg.Settings()
 
     assert s.budget_mode is False
-    assert s.system_ops_timeout == 90
+    assert s.news_retention_days == 90
 
 
 def test_absent_managed_file_is_not_an_error(settings_cls, monkeypatch):

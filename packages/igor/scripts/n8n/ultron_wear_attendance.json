@@ -1,5 +1,5 @@
 {
-  "name": "Ultron Wear — attendance ask",
+  "name": "Speda Wear — attendance ask",
   "meta": {
     "description": "Every 5 minutes during teaching hours, asks Igor whether a lecture just ended without an answer. Igor pushes the 'derse girdin mi?' question to the watch when one has. Import into n8n, set the two credentials, activate."
   },
@@ -106,7 +106,7 @@
     },
     {
       "parameters": {
-        "content": "=Ultron Wear asked about **{{ $json.course }}** ({{ $json.asked }}) on {{ $json.delivered }} device(s).",
+        "content": "=Speda Wear asked about **{{ $json.course }}** ({{ $json.asked }}) on {{ $json.delivered }} device(s).",
         "options": {}
       },
       "id": "log-sent",

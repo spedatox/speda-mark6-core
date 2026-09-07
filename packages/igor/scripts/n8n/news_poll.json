@@ -1,7 +1,7 @@
 {
   "name": "News poll",
   "meta": {
-    "description": "Ticks the Tier-1 RSS collector (app/news/collector.py) so the news_headlines tool has something to read. Pure Python on the backend — no model, no tokens — fetch/dedup/store across every enabled feed, plus watchlist matching. A keyword hit escalates itself to a NightCrawler push turn from inside the collector; this workflow does not do that part. Safe to activate as-is."
+    "description": "Ticks the Tier-1 RSS collector (app/news/collector.py) so the news_headlines tool has something to read. Pure Python on the backend — no model, no tokens — fetch/dedup/store across every enabled feed, plus watchlist matching. A keyword hit escalates itself to a Speda push turn from inside the collector; this workflow does not do that part. Safe to activate as-is."
   },
   "nodes": [
     {

@@ -129,7 +129,7 @@ async def sync_attendance(
 
 @router.get("/academic/attendance/summary")
 async def attendance_summary(db: AsyncSession = Depends(get_db)) -> dict:
-    """Per-subject verdicts — the same numbers the watch shows and Ultron
+    """Per-subject verdicts — the same numbers the watch shows and the academic desk
     quotes."""
     return {"summaries": await academic_service.summarise(db)}
 
@@ -143,10 +143,10 @@ async def ask_pending(
     """
     Push the "derse girdin mi?" question for a lecture that just ended.
 
-    ── Why this is a plain endpoint and not a /trigger/ultron turn ──────────
+    ── Why this is a plain endpoint and not a /trigger/speda turn ──────────
     n8n remains the sole scheduling organ — it owns the cron, this just performs
     the action, exactly like the `DELETE /admin/outputs` cleanup n8n already
-    calls on a schedule. Routing it through `POST /trigger/ultron` instead would
+    calls on a schedule. Routing it through `POST /trigger/speda` instead would
     spend a full agentic turn every five minutes to discover that no class ended,
     roughly a hundred LLM calls a day to answer "no". There is no reasoning in
     this decision: a lecture either just ended unanswered or it did not.

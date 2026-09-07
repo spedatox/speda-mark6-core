@@ -96,40 +96,7 @@ class ChatRequest(BaseModel):
     keep_messages: int | None = None  # delete all but the first N messages, then proceed
     regenerate: bool = False          # re-run on existing history; do NOT add a new user message
 
-    # Working directory for an external-backend agent (the Forge / Optimus). It
-    # lands in context.extra["cwd"] → the peer's chat_request.cwd → the Cell
-    # workspace + Graphify root. Ignored by in-process agents. None = the peer's
-    # own default workspace.
-    cwd: str | None = None
-
-    @field_validator("cwd")
-    @classmethod
-    def _cwd_is_blank_or_a_path(cls, value: str | None) -> str | None:
-        """Normalise only. WHICH paths are legal is not decidable here.
-
-        This used to refuse every Windows path outright, because the only peer
-        was server-side POSIX and a Windows string does not fail on Linux — it
-        becomes a directory NAMED after the path (see app/core/peer_routing.py
-        for the 2026-08-04 incident). That guard was correct then and wrong the
-        moment a peer runs on the owner's PC, where `C:\\Users\\…` is exactly
-        the right answer.
-
-        A schema has no access to app.state and therefore cannot know which
-        machines are attached or what they cover, so the decision moved to
-        peer_routing.resolve(), which is called with the live peer list on both
-        paths that reach a peer: ExternalAgentProxy.run for chat turns and
-        AgentDispatcher._run_external for dispatched tasks. A path no connected
-        peer claims is refused there, by name, instead of being sent anywhere.
-        """
-        if value is None:
-            return None
-        return value.strip() or None
-
 
 class ChatResponse(BaseModel):
     session_id: int
     request_id: str
-
-
-class SteerRequest(BaseModel):
-    text: str

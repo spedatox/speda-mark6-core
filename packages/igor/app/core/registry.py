@@ -4,8 +4,6 @@
 import logging
 from typing import TYPE_CHECKING
 
-from app.legion.roster import TASK_TOOL_DEFINITION
-
 if TYPE_CHECKING:
     from app.adapters.base import OSSAdapter
     from app.core.context import AgentContext
@@ -40,10 +38,8 @@ class CapabilityRegistry:
         client: "LLMClient | None" = None,
         profiles: "ProfileRegistry | None" = None,
     ) -> None:
-        self._client = client            # Injected at startup — required for the Legion
-        self._profiles = profiles        # Drives provider-agnostic worker model resolution
-        self._legion = None              # LegionRunner, built in register_legion()
-        self._task_tool_registered = False
+        self._client = client            # Injected at startup — kept for skills that need it
+        self._profiles = profiles        # The single-agent roster; drives model resolution
         self._skills: dict[str, "Skill"] = {}
         self._mcp_clients: dict[str, "MCPClient"] = {}
         self._mcp_tool_map: dict[str, str] = {}  # tool_name → server_name
@@ -95,46 +91,6 @@ class CapabilityRegistry:
                 extra={"mode": mode},
             )
         return self._dz_offline
-
-    # ── Tier 0 — The Legion ───────────────────────────────────────────────────
-
-    def register_legion(self) -> None:
-        """Register The Legion (wire name "Task"). Must be called FIRST.
-
-        Always registered, but hidden at runtime when budget mode is on (see
-        list_tools) — so budget mode can be toggled live without a restart."""
-        from app.legion.runner import LegionRunner
-
-        self._legion = LegionRunner(self._client, self, self._profiles)
-        self._task_tool_registered = True
-        logger.info(
-            "registry_register",
-            extra={"tier": 0, "capability": "Task", "brand": "legion"},
-        )
-
-    def set_legion_report_hook(self, hook) -> None:
-        """Wire the completion callback for BACKGROUND legionnaires.
-
-        Called late in the lifespan, not at register_legion(): the hook closes
-        over the orchestrator, turn registry and session manager, none of which
-        exist when Tier 0 is registered first. A no-op if the Legion was never
-        registered, so the ordering rule stays a startup concern rather than
-        something every caller has to know about.
-        """
-        if self._legion is not None:
-            self._legion.set_report_hook(hook)
-
-    @property
-    def legion_runs(self):
-        """The Legion's live-run registry (buffer + subscriber queues, keyed
-        by ticket id) — routers read this to list/attach to in-flight
-        background legionnaires. `None` if the Legion was never registered."""
-        return self._legion.runs if self._legion is not None else None
-
-    async def legion_shutdown(self) -> None:
-        """Cancel in-flight background legionnaires (lifespan teardown)."""
-        if self._legion is not None:
-            await self._legion.shutdown()
 
     # ── Tier 1 ────────────────────────────────────────────────────────────────
 
@@ -241,13 +197,12 @@ class CapabilityRegistry:
         pulled in on demand by the use_toolset tool.
 
         offline_only (Dead Zone Protocol): only Tier-1 skills that work without
-        an uplink survive — MCP servers, adapters and the Legion (whose workers
-        spawn LLM calls of their own) are all dropped.
+        an uplink survive — MCP servers and adapters are dropped.
 
         allowlist (per-agent scoping): when set, only tools whose owning
-        capability (skill name / MCP server / adapter / "Task") is listed are
+        capability (skill name / MCP server / adapter) is listed are
         returned — runtime-infrastructure skills (_ALWAYS_AVAILABLE) always pass.
-        None = the full registry (e.g. Speda the orchestrator). The profile
+        None = the full registry, which is what Core always uses. The profile
         declares the allowlist; the registry enforces it (Rules 5 + 10).
 
         loaded_tools: deferred tools resolved by `tool_search` this turn. They
@@ -266,14 +221,11 @@ class CapabilityRegistry:
 
         tools: list[dict] = []
 
-        if self._task_tool_registered and not get_budget_mode() and not offline_only:
-            tools.append(TASK_TOOL_DEFINITION)
-
         for skill in self._skills.values():
             if offline_only and getattr(skill, "requires_network", False):
                 continue
             if not self._agent_may_use(skill, agent_id):
-                continue  # privileged skill, wrong agent (e.g. system_ops → orion only)
+                continue  # privileged skill, wrong agent
             defn = skill.to_tool_definition()
             if (
                 settings.lazy_tools
@@ -575,10 +527,9 @@ class CapabilityRegistry:
         dropped wholesale the moment any mutating tool runs, because a write can
         change what a subsequent read should return.
 
-        `tool_call_id`/`emit` are Legion-only passthroughs: the orchestrator's
-        own `block.id` becomes the run id a live legionnaire panel keys on,
-        and `emit` is a synchronous callback for mid-run progress. Both are
-        `None` and inert for every other tool.
+        `tool_call_id`/`emit` are inert on Core — they exist so a skill can
+        report mid-run progress against the orchestrator's own `block.id`, and
+        nothing registered here uses them.
         """
         # `extra` is absent on the light stand-in contexts some callers build,
         # so the memo degrades to off rather than making tool execution depend
@@ -599,9 +550,8 @@ class CapabilityRegistry:
                     return memo[memo_key]
             except (TypeError, ValueError):
                 memo_key = None  # unserialisable args — just run it
-        elif extra is not None and tool_name != "Task":
-            # A mutating call invalidates every cached read. Task is exempt: a
-            # legionnaire runs in its own context and cannot mutate this one's.
+        elif extra is not None:
+            # A mutating call invalidates every cached read.
             extra.pop("tool_memo", None)
 
         result = await self._dispatch(tool_name, args, context, tool_call_id=tool_call_id, emit=emit)
@@ -640,11 +590,6 @@ class CapabilityRegistry:
     ) -> str:
         """Tier routing proper. execute() wraps this with the per-turn memo."""
         try:
-            if tool_name == "Task":
-                if self._legion is None:
-                    return "The Legion is not registered on this deployment."
-                return await self._legion.run_worker(args, context, tool_call_id=tool_call_id, emit=emit)
-
             if tool_name in self._skills:
                 skill = self._skills[tool_name]
                 if not self._agent_may_use(skill, context.agent_id):
@@ -673,8 +618,7 @@ class CapabilityRegistry:
             # corrective result instead of a bare error so the model can
             # self-recover in the next iteration rather than looping or dying.
             known = sorted(
-                ({"Task"} if self._task_tool_registered else set())
-                | set(self._skills)
+                set(self._skills)
                 | set(self._mcp_tool_map)
                 | set(self._adapters)
             )
@@ -700,14 +644,11 @@ class CapabilityRegistry:
             )
             return f"Error executing {tool_name}: {str(e)}"
 
-    # ── Ownership lookups (used by the Legion's tool scoping) ─────────────────
+    # ── Ownership lookups ─────────────────────────────────────────────────────
 
     def tool_owner(self, tool_name: str) -> tuple[str, str]:
-        """Which capability owns a tool: ("skill"|"mcp"|"adapter"|"task"|"unknown",
-        owner name). The Legion uses this to scope read-only workers to
-        read-only skills + research MCP servers."""
-        if tool_name == "Task":
-            return ("task", "Task")
+        """Which capability owns a tool: ("skill"|"mcp"|"adapter"|"unknown",
+        owner name)."""
         if tool_name in self._skills:
             return ("skill", tool_name)
         srv = self._mcp_tool_map.get(tool_name)

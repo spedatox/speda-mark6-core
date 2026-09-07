@@ -1,6 +1,0 @@
-<resources>
-    <!-- Only the window background needs a native colour; everything else is the
-         Compose palette. True black so the OLED panel keeps these pixels off and
-         there's no flash of a lighter surface before Compose paints. -->
-    <color name="hb_void">#000000</color>
-</resources>

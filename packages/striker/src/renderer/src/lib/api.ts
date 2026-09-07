@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ahmet Erol Bayrak
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { AppConfig, SSEEvent, ModelInfo, ImageBlock, DocBlock, PendingAsk, Session } from './types'
+import type { AppConfig, SSEEvent, ModelInfo, ImageBlock, DocBlock, Session } from './types'
 
 /** Auth header for every backend call — the service X-API-Key. */
 export function authHeaders(
@@ -101,8 +101,6 @@ export interface StreamOpts {
   keepMessages?: number
   /** Re-run on existing history without appending a new user message. */
   regenerate?: boolean
-  /** Working directory for an external-backend agent (the Forge / Optimus). */
-  cwd?: string
   /** The reply will be SPOKEN. Changes how the backend asks for it to be
    *  written — prose to be heard, artefacts fenced for the canvas — so it has to
    *  be known before the turn runs, not filtered out of it afterwards. */
@@ -146,7 +144,6 @@ export async function* streamChat(
       ...(opts.documents && opts.documents.length ? { documents: opts.documents } : {}),
       ...(opts.keepMessages != null ? { keep_messages: opts.keepMessages } : {}),
       ...(opts.regenerate ? { regenerate: true } : {}),
-      ...(opts.cwd ? { cwd: opts.cwd } : {}),
       ...(opts.requestId ? { request_id: opts.requestId } : {}),
       // Surface awareness — tell Speda whether this turn came from the desktop
       // app or the web build. (The Android app and Telegram set their own.)
@@ -753,97 +750,6 @@ export async function memoryStatus(config: AppConfig): Promise<MemoryStatus> {
   return res.json()
 }
 
-/* ── Inter-agent comms (AGENT_COMMS tray) ─────────────────────────────────── */
-
-export interface AgentCommEntry {
-  id: number
-  request_id: string
-  from_agent: string
-  to_agent: string
-  kind: string          // dispatch | broadcast
-  protocol: string      // direct | house_party
-  task: string
-  result: string | null
-  status: string        // running | ok | error | timeout | offline | refused
-  duration_ms: number | null
-  created_at: string
-}
-
-/** Recent inter-agent traffic, newest first. after_id polls incrementally. */
-export async function fetchAgentComms(
-  config: AppConfig,
-  limit = 100,
-  afterId = 0,
-): Promise<AgentCommEntry[]> {
-  try {
-    const res = await fetch(
-      `${config.apiBase}/agents/comms?limit=${limit}&after_id=${afterId}`,
-      { headers: authHeaders(config) },
-    )
-    if (!res.ok) return []
-    return res.json()
-  } catch {
-    return []
-  }
-}
-
-export async function getHouseParty(config: AppConfig): Promise<boolean> {
-  try {
-    const res = await fetch(`${config.apiBase}/agents/house-party`, { headers: authHeaders(config) })
-    if (!res.ok) return false
-    return !!(await res.json()).engaged
-  } catch {
-    return false
-  }
-}
-
-/** Stand the protocol down (and, historically, the un-gated toggle).
- *
- *  Engaging goes through engageHouseParty, which carries the passphrase. This
- *  still sends `platform` so an engage attempted through here is judged by the
- *  same rule rather than slipping past it. */
-export async function setHouseParty(config: AppConfig, engaged: boolean): Promise<boolean> {
-  try {
-    const res = await fetch(`${config.apiBase}/agents/house-party`, {
-      method: 'POST',
-      headers: authHeaders(config, { 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ engaged, platform: desktopClientContext().platform }),
-    })
-    if (!res.ok) return engaged
-    return !!(await res.json()).engaged
-  } catch {
-    return engaged
-  }
-}
-
-/** Engage the House Party Protocol with the owner's authorization passphrase.
- *  The passphrase is validated server-side (never stored in chat). Returns
- *  {ok:false, error} on a wrong passphrase (403) or a network failure. */
-export async function engageHouseParty(
-  config: AppConfig,
-  passphrase: string,
-): Promise<{ ok: boolean; error?: string }> {
-  try {
-    const res = await fetch(`${config.apiBase}/agents/house-party`, {
-      method: 'POST',
-      headers: authHeaders(config, { 'Content-Type': 'application/json' }),
-      // `platform` gates the engage: the backend refuses any surface that is
-      // not the deck, and a client that does not name itself counts as not the
-      // deck. This is the path that must always carry it.
-      body: JSON.stringify({ engaged: true, passphrase, platform: desktopClientContext().platform }),
-    })
-    if (res.status === 403) return { ok: false, error: 'Authorization denied — incorrect passphrase.' }
-    if (res.status === 409) {
-      const detail = await res.json().catch(() => null)
-      return { ok: false, error: detail?.detail ?? 'The protocol is available on the desktop app only.' }
-    }
-    if (!res.ok) return { ok: false, error: `Engage failed (HTTP ${res.status}).` }
-    return { ok: !!(await res.json()).engaged }
-  } catch {
-    return { ok: false, error: "Couldn't reach the backend to engage." }
-  }
-}
-
 /* ── Per-agent source-of-truth memory files ───────────────────────────────── */
 
 export interface SourceAgentInfo {
@@ -999,106 +905,6 @@ export async function pinTelegramModel(
   } catch {
     return []
   }
-}
-
-/* ── Legion worker model routing ──────────────────────────────────────────── */
-
-export interface LegionModelInfo {
-  worker_id: string
-  when_to_use: string
-  effort: string
-  /** Human-readable description of the effort rule used when nothing is pinned. */
-  derived_from: string
-  override: string | null
-  /** LEGION_MODEL_OVERRIDE from the deployment env — outranks every pin. */
-  deployment_pin: string | null
-}
-
-export async function fetchLegionModels(config: AppConfig): Promise<LegionModelInfo[]> {
-  try {
-    const res = await fetch(`${config.apiBase}/agents/legion-models`, { headers: authHeaders(config) })
-    if (!res.ok) return []
-    return res.json()
-  } catch {
-    return []
-  }
-}
-
-/** Pin a legionnaire to a model ref; null clears it (back to effort policy). */
-export async function pinLegionModel(
-  config: AppConfig,
-  workerId: string,
-  model: string | null,
-): Promise<LegionModelInfo[]> {
-  try {
-    const res = await fetch(`${config.apiBase}/agents/legion-models`, {
-      method: 'POST',
-      headers: authHeaders(config, { 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ worker_id: workerId, model }),
-    })
-    if (!res.ok) return []
-    return res.json()
-  } catch {
-    return []
-  }
-}
-
-/* ── Online external peers (the Forge link) ───────────────────────────────── */
-
-/** One external peer agent currently connected over WS /agents/ws/<id> — i.e.
- *  an agent whose real engine is a standalone backend (the Forge, for Optimus).
- *  An agent absent from this list is answering from its in-process profile. */
-export interface OnlineAgent {
-  agent_id: string
-  agent_name: string
-  domain: string
-  status: string
-  last_seen: string | null
-  capabilities: string[]
-}
-
-/** The list of external peers the backend currently sees as online. Feeds the
- *  FORGE LINK status indicator; a fetch failure is treated as "none online". */
-export async function fetchOnlineAgents(config: AppConfig): Promise<OnlineAgent[]> {
-  try {
-    const res = await fetch(`${config.apiBase}/agents`, { headers: authHeaders(config) })
-    if (!res.ok) return []
-    return res.json()
-  } catch {
-    return []
-  }
-}
-
-
-/** Irreversible operations a peer is waiting on the owner for.
-
-    The guaranteed path. A chat job's card also arrives inline on its own
-    stream, but a dispatched background job has no stream, and a window that was
-    closed when the ask was raised never saw one either. */
-export async function fetchPendingAsks(config: AppConfig): Promise<PendingAsk[]> {
-  const res = await fetch(`${config.apiBase}/agents/asks`, { headers: authHeaders(config) })
-  if (!res.ok) return []
-  return res.json()
-}
-
-/** Send the owner's decision down to the peer.
-
-    A 404 means the ask is gone — expired, already answered, or its agent
-    disconnected. That is not a retry condition: the peer runs its own timeout
-    and has already denied locally, so the operation did not happen either way. */
-export async function answerAsk(
-  config: AppConfig,
-  askId: string,
-  approved: boolean,
-  remember = false,
-  note = '',
-): Promise<boolean> {
-  const res = await fetch(`${config.apiBase}/agents/asks/${encodeURIComponent(askId)}`, {
-    method: 'POST',
-    headers: { ...authHeaders(config), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ approved, remember, note }),
-  })
-  return res.ok
 }
 
 /* ── Persistent reminders ─────────────────────────────────────────────────────

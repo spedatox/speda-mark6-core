@@ -3,7 +3,7 @@
 
 /**
  * Striker (Speda Mark VI Core) is single-agent, so there is no runtime hue-morph
- * or House Party colour parade — the palette is static (theme/striker.css). All
+ * or colour parade — the palette is static (theme/striker.css). All
  * that survives here is deriving the profile's hover accent from its base accent.
  */
 

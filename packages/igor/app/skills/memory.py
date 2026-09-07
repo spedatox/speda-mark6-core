@@ -139,7 +139,7 @@ _Current split and working loads per main lift, dated._
 ## 4. GYM ENVIRONMENT & EQUIPMENT
 
 _What the gym actually has, and what is missing, broken or always occupied.
-Atomix asks; never assumes._
+the health desk asks; never assumes._
 
 ## 5. LOG
 
@@ -161,7 +161,7 @@ _One entry per session, newest first:_
 
 _Sentinel's domain file. The authoritative record of the owner's finances:
 accounts, balances, income, recurring expenses, budgets, holdings and financial
-goals. Sentinel READS this for every figure it reports and WRITES every update
+goals. the agent READS this for every figure it reports and WRITES every update
 here (via the memory tool). Keep it current — supersede stale figures in place,
 date material changes. Program-level life context ("saving for the wedding")
 belongs in current.md with a cross-reference._
@@ -216,27 +216,12 @@ def preload_paths(existing: set[str] | None = None) -> list[str]:
 # The static view, for callers that only ask "is this path injected".
 PRELOAD_FILES = preload_paths()
 
-# Per-agent SOURCE-OF-TRUTH file: the one domain file an agent both reads (it is
-# preloaded into the system prompt every turn) and writes (all of its domain data
-# goes there). These are the built-in defaults; the owner can reassign any agent's
-# source file from the desktop Configuration tab (runtime_state.get_agent_sources,
-# which overrides this map per agent). Atomix owns the gym log, Sentinel the
-# finance ledger (docs/MEMORY_ARCHITECTURE.md §2.1).
-# Which agent owns which document. Not a preference — the revision trail shows
-# this is already how the store behaves (academic.md written by ultron 19 times
-# and nobody else, wellness.md by atomix 11 of 12, finance.md by sentinel 23 of
-# 32). Recording it makes it enforceable instead of merely true so far.
-#
-# atomix moved from sessions.md to wellness.md: they are the same document
-# continued — identical section structure, wellness.md newer and larger — and
-# sessions.md is retired (memory_store.RETIRED_FILES).
-AGENT_SOURCE_DEFAULTS: dict[str, str] = {
-    "atomix": "/memories/wellness",
-    "sentinel": "/memories/finance",
-    "ultron": "/memories/academic",
-    "centurion": "/memories/cybersec",
-    "orion": "/memories/ops",
-}
+# SOURCE-OF-TRUTH directory: the one domain directory the agent both reads (it
+# is preloaded into the system prompt every turn) and writes. Core has a single
+# agent that owns the whole store, so there is no built-in per-agent default —
+# the owner can still pin one from the desktop Configuration tab
+# (runtime_state.get_agent_sources, which overrides this map).
+AGENT_SOURCE_DEFAULTS: dict[str, str] = {}
 
 
 def source_file_for(agent_id: str) -> str | None:
@@ -255,7 +240,7 @@ def source_preload_for(agent_id: str) -> list[str]:
 
     Its STANDING context — the profile, the program, the runbook — and never the
     dated log, which is the one member that grows without bound. Preloading
-    `wellness.md` whole meant Atomix paid 27 KB every turn to be told his own
+    `wellness.md` whole meant the health desk paid 27 KB every turn to be told his own
     training split, and 14 KB of that was a session log he re-read from the top
     on every request. The log is one `view` away and he is told its exact path.
 
@@ -297,7 +282,7 @@ def _schema_note(
     returns that message verbatim as the tool result and saves nothing. Otherwise
     returns advisory warnings to append to a successful result, so the agent
     learns the rule on the write that nearly broke it rather than a day later in
-    Orion's audit log.
+    the audit log.
     """
     warnings = check_write(
         path=path, before=before, after=after, is_create=is_create, author=agent_id
@@ -355,7 +340,7 @@ def _format_directory(
     for f in sorted(files, key=lambda x: x.path):
         parent = f.path.rsplit("/", 1)[0]
         # Dot-directories are the store's back office — `.archive/` holds the
-        # monoliths their members replaced, `.audit/` holds Orion's trail. Both
+        # monoliths their members replaced, `.audit/` holds the audit's trail. Both
         # are readable by path if anyone needs them, but listing them offers
         # every agent a 27 KB superseded copy of a document it should be reading
         # as a 4 KB member, and the listing is precisely where an agent decides
@@ -584,7 +569,7 @@ async def recall_for_context(user_id: int, db, agent_id: str = "speda", *, cache
     Load the memory context to prepend to the system prompt.
     Returns: directory listing (so the agent knows what exists) + the preloaded
     set (owner/current/dossier/history, plus any per-agent working file such as
-    Atomix's sessions.md). The agent reads the remaining files JIT during the
+    the health desk's sessions.md). The agent reads the remaining files JIT during the
     conversation via the memory tool.
     """
     await ensure_seeded(user_id, db)
@@ -847,7 +832,7 @@ class MemorySkill(Skill):
         "projects and people are one file each. Use 'create'/'str_replace' only to FILE a "
         "genuinely new, durable fact in the ONE correct file per the routing rules in your "
         "memory protocol — a new person or project means 'create' on its own path, an active "
-        "life state → current.md. Do not tidy other files; the Orion custodian owns hygiene. "
+        "life state → current.md. Do not tidy other files; the the nightly audit custodian owns hygiene. "
         "Every write is versioned. Most turns need no memory operations at all."
     )
     read_only = False
@@ -1125,7 +1110,7 @@ class MemorySkill(Skill):
         # and the next agent with a fact for it has nowhere legal to put it. An
         # OPEN entity collection (`projects/`, `social/`) is not part of that
         # set — its members are meant to be added AND removed, which is what
-        # lets Orion delete the stray half of a duplicate project or person file.
+        # lets the nightly audit delete the stray half of a duplicate project or person file.
         from app.services.memory_schema import is_removable
 
         if not is_removable(path):

@@ -518,18 +518,6 @@
       ]
     },
     {
-      "id": "legion-en",
-      "query": "what is the subagent system called",
-      "lang": "en",
-      "tags": [
-        "project",
-        "basic"
-      ],
-      "expect": [
-        "legion"
-      ]
-    },
-    {
       "id": "style-en",
       "query": "how does he want responses written",
       "lang": "en",
@@ -557,18 +545,6 @@
         "no padding",
         "jarvis",
         "short"
-      ]
-    },
-    {
-      "id": "skyfall-en",
-      "query": "what is the Skyfall Protocol",
-      "lang": "en",
-      "tags": [
-        "project"
-      ],
-      "expect": [
-        "kill switch",
-        "skyfall"
       ]
     },
     {
@@ -730,17 +706,6 @@
         "social-media",
         "commercial",
         "retainer"
-      ]
-    },
-    {
-      "id": "forge-en",
-      "query": "what is FORGE",
-      "lang": "en",
-      "tags": [
-        "project"
-      ],
-      "expect": [
-        "forge"
       ]
     },
     {

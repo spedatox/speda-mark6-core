@@ -27,7 +27,7 @@ interface Props {
 }
 
 /**
- * Core header — single agent. No Forge link, no war-room entry, no inter-agent
+ * Core header — single agent. No peer link, no roster entry, no inter-agent
  * comms; just the sidebar toggle, the active session title, a live message/
  * streaming readout, and the systems-board toggle.
  */

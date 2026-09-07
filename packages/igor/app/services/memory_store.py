@@ -10,7 +10,7 @@ all live in this service, never in the endpoint.
 
 Three write paths feed one audit trail (MemoryRevision):
   - the memory SKILL (an agent writing mid-conversation)  → author = agent_id
-  - Orion's nightly audit                                  → author = "orion"
+  - the nightly audit                                  → author = "speda"
   - the owner committing from the systems board            → author = "owner"
 
 `record_revision` is the single choke point they all pass through.
@@ -32,7 +32,7 @@ MEMORY_ROOT = "/memories"
 # ── The canonical file taxonomy (docs/MEMORY_ARCHITECTURE.md §2) ──────────────
 # The closed set of files the owner may view AND edit from the systems board.
 # One question per file; anything outside this set is either system-internal
-# (dot-prefixed, e.g. /memories/.audit/) or a stray that Orion folds back in.
+# (dot-prefixed, e.g. /memories/.audit/) or a stray that the nightly audit folds back in.
 # This list was written from docs/MEMORY_ARCHITECTURE.md's declared taxonomy and
 # was wrong: the real store has fourteen files, and the five it did not know about
 # were invisible to every gate, every migration and every audit. `wellness.md`
@@ -52,14 +52,14 @@ CANONICAL_FILES: dict[str, str] = {
     "/memories/log.md": "Rolling one-line session summaries (system-written)",
     # ── Agent-owned domain files ─────────────────────────────────────────────
     # Ownership here is not aspirational: the revision trail shows academic.md
-    # written by ultron 19 times and nobody else, wellness.md by atomix 11 of 12,
-    # finance.md by sentinel 23 of 32. The store organised itself this way; this
+    # written by speda 19 times and nobody else, wellness.md by speda 11 of 12,
+    # finance.md by speda 23 of 32. The store organised itself this way; this
     # records it so the gate can enforce it.
-    "/memories/finance.md": "Monthly ledger — incomes, expenses, debts, schedules (Sentinel)",
-    "/memories/wellness.md": "Training protocol, athlete profile and session log (Atomix)",
-    "/memories/academic.md": "Academic calendar, KPSS prep, course materials, standing (Ultron)",
-    "/memories/cybersec.md": "Cybersecurity learning journey (Centurion)",
-    "/memories/ops.md": "Runbook and action log for the host (Orion)",
+    "/memories/finance.md": "Monthly ledger — incomes, expenses, debts, schedules (the agent)",
+    "/memories/wellness.md": "Training protocol, athlete profile and session log (the health desk)",
+    "/memories/academic.md": "Academic calendar, KPSS prep, course materials, standing (the academic desk)",
+    "/memories/cybersec.md": "Cybersecurity learning journey (the security desk)",
+    "/memories/ops.md": "Runbook and action log for the host (the nightly audit)",
 }
 
 # Superseded by wellness.md, which is the same document continued — identical
@@ -71,7 +71,7 @@ RETIRED_FILES: frozenset[str] = frozenset({
     "/memories/kpss.md",       # merged into academic.md as its KPSS 2026 section
 })
 
-# System-internal trails Orion writes but the owner does not edit. Dot-prefixed
+# System-internal trails the nightly audit writes but the owner does not edit. Dot-prefixed
 # so they never enter the injection set or the canonical-file rule.
 AUDIT_ROOT = "/memories/.audit"
 # Documents whose members replaced them. Kept verbatim and readable by path,
@@ -166,14 +166,14 @@ async def commit_file(
     written since the board loaded it (its `updated_at` no longer matches
     `expected_updated_at`), raise MemoryConflict instead of overwriting — an
     agent wrote mid-edit and the owner must re-diff. Records an `author="owner"`
-    revision. Owner writes are ground truth (§4.3): Orion may re-file them but
+    revision. Owner writes are ground truth (§4.3): the nightly audit may re-file them but
     never alters their substance.
     """
     file = await _get_file(db, user_id, path)
     before = file.content if file else ""
 
     # Inspect against the file law but never block: §4.3 makes owner writes
-    # ground truth. Violations are logged so Orion's audit picks them up and
+    # ground truth. Violations are logged so the nightly audit picks them up and
     # re-files the content without altering a word of it. Imported lazily —
     # memory_schema imports this module for the canonical set.
     from app.services.memory_schema import check_write

@@ -299,12 +299,12 @@ async def _get_file(db: AsyncSession, user_id: int, path: str) -> "MemoryFile | 
 
 
 # How long a snapshot file may go untouched before this fallback refreshes it.
-# Orion's nightly audit (scripts/n8n/memory_audit.json, Pass 5) is the PRIMARY
+# the nightly audit (scripts/n8n/memory_audit.json, Pass 5) is the PRIMARY
 # owner of these two files — this task only steps in when he has been silent for
 # longer than a night, which means either the audit workflow is not imported or
 # it has been failing. Guarding on the file's own updated_at (rather than the old
 # "_Last updated: <today>_" prose stamp) is what makes deference automatic: any
-# writer counts, Orion and in-conversation agent writes alike, so the fallback
+# writer counts, the nightly audit and in-conversation agent writes alike, so the fallback
 # never overwrites fresher work and never double-writes against the audit.
 _SNAPSHOT_FALLBACK_HOURS = 36
 
@@ -329,7 +329,7 @@ async def run_daily_maintenance(
     """
     Fallback composition of the two narrative surfaces (owner.md, current.md).
 
-    Under v3 these are the only memory files a model still writes, and Orion owns
+    Under v3 these are the only memory files a model still writes, and the nightly audit owns
     them in his nightly audit (docs/MEMORY_ARCHITECTURE_V3.md §4.2). This is the
     safety net beneath that: it composes only when NEITHER file has been written
     in _SNAPSHOT_FALLBACK_HOURS, which on a healthy system means never — one

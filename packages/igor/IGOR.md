@@ -1,6 +1,8 @@
 # Igor
 
-The backend. One FastAPI process: every agent, the memory system, the tool registry, the orchestrator loop, and the database. Every other package in this repo is a client of this one.
+The backend. One FastAPI process: the agent, the memory system, the tool registry, the orchestrator loop, and the database. Every other package in this repo is a client of this one.
+
+This is the **Core** build — one agent, Speda. There is no roster, no inter-agent dispatch, no Legion worker corps, no House Party, no external-peer bridge, no Hisar and none of the named deployment protocols. Where the full Mark VI build has a multi-agent engine, Core has a single loop; the machinery those features hung off is deleted here, not disabled behind a flag.
 
 ---
 
@@ -22,22 +24,20 @@ The backend. One FastAPI process: every agent, the memory system, the tool regis
 
 | Path | Contents |
 |---|---|
-| `app/core/` | The engine: request context, the agentic loop, the tool registry, session management, inter-agent dispatch, the external-peer bridge, the detached turn runner, process-local runtime flags |
+| `app/core/` | The engine: request context, the agentic loop, the tool registry, session management, the detached turn runner, process-local runtime flags |
 | `app/models/` | SQLAlchemy ORM tables, one file per entity |
 | `app/schemas/` | Pydantic request/response DTOs, one file per feature area |
-| `app/services/` | Business logic and integrations with no HTTP or LLM-tool concerns — memory, embeddings, mail/web watching, Google/Microsoft auth, task queue, the named safety protocols |
+| `app/services/` | Business logic and integrations with no HTTP or LLM-tool concerns — memory, embeddings, mail/web watching, Google/Microsoft auth, task queue |
 | `app/skills/` | Tier-1 capabilities — one file per LLM-callable tool |
 | `app/mcp/` | Tier-2 MCP client plumbing and the REST-backed pseudo-MCP servers for Gmail/Calendar/Outlook |
 | `app/adapters/` | Tier-3 wrapped external agent runtimes |
-| `app/legion/` | The Tier-0 parallel research worker system |
-| `app/profiles/` | One `AgentProfile` subclass per persona — identity, tool allowlist, model policy, prompt branding |
+| `app/profiles/` | The single `AgentProfile` — identity, tool allowlist, model policy, prompt branding |
 | `app/routers/` | Thin FastAPI routers, one per feature surface, delegating to services/orchestrator |
 | `app/middleware/` | API key auth, security headers |
-| `app/prompts/` | Markdown system-prompt fragments — a shared policy stack plus per-persona identity blocks |
+| `app/prompts/` | Markdown system-prompt fragments — the policy stack the agent's `PROMPT_SECTIONS` assembles |
 | `app/automations/` | n8n-backed scheduled/triggered workflow composition |
-| `app/telegram/` | The bot fleet — one bot per agent, inbound gateway, message rendering |
+| `app/telegram/` | The bot — registry, inbound gateway, message rendering |
 | `app/news/` | RSS collection, dedup, escalation |
-| `app/websocket/` | The external-peer WebSocket manager and message protocol |
 | `app/config.py`, `app/database.py`, `app/main.py` | Settings, engine/session bootstrap, app factory and lifespan |
 
 ---
@@ -57,7 +57,7 @@ config, database, clock
 
 Routers can reach directly into services (a router isn't an LLM tool call, so there's no need to route through a skill). `core/orchestrator.py` reaches up into two memory-recall helpers in `skills/memory.py` — a deliberate, narrow exception, not a pattern to extend. `core/registry.py` imports skill/adapter/profile *types* only under `TYPE_CHECKING`; actual instances are passed in, keeping the registry decoupled from what it registers.
 
-Tool tiers register at startup in a fixed order: **Legion (Tier 0) → Skills (Tier 1) → MCP servers (Tier 2) → Adapters (Tier 3)**. A handful of infrastructure skills (`memory`, `read_skill`, `use_toolset`, `tool_search`) are always available regardless of an agent's tool allowlist.
+Tool tiers register at startup in a fixed order: **Skills (Tier 1) → MCP servers (Tier 2) → Adapters (Tier 3)**. Tier 0 — the Legion — does not exist on Core; the tier numbering is kept so the two builds' registries read the same. A handful of infrastructure skills (`memory`, `read_skill`, `use_toolset`, `tool_search`) are always available regardless of the tool allowlist.
 
 ---
 
@@ -153,7 +153,7 @@ without a restart:
 |---|---|
 | `settings.canvas_*` | Whether there is a board at all, how many windows a turn may open, and the spoken word budgets (`canvas_spoken_words`, `canvas_briefing_words`). Budgets are **targets, never truncation** — a reply cut off mid-sentence costs the same to synthesize as a finished one and is worth less. |
 | `canvas_activity_after_ms` | How long a spoken turn may stay silent before the clients open a window showing what the machine is doing. A tool firing opens it immediately regardless. It exists because a working turn and a hung one were indistinguishable from the outside. |
-| `Profile.canvas_brief` | What presenting looks like for THIS agent, appended to the generic brief. Identity, so it lives in `app/profiles/` (Rule 10): Sentinel turns every figure into a tile or a chart, NightCrawler gives every source its own window with the photo it came with. |
+| `Profile.canvas_brief` | What presenting looks like for this agent, appended to the generic brief. Identity, so it lives in `app/profiles/` (Rule 10). |
 
 A window's picture has to come from somewhere, and the brief forbids inventing
 one: an address the model made up renders as a hole. `browse_page` therefore
@@ -184,7 +184,7 @@ system speaks. `app/services/language.py` is the only module that reads it.
 
 | Surface | How it follows |
 |---|---|
-| What every agent WRITES | `prompts/core/15_language.md`, in every profile's `PROMPT_SECTIONS`, built with `language.name_of()` by `AgentOrchestrator.build_system_prompt` |
+| What the agent WRITES | `prompts/core/13_language.md`, in the profile's `PROMPT_SECTIONS`, built with `language.name_of()` by `AgentOrchestrator.build_system_prompt` |
 | Synthesis | `language.tts_locale()` — `settings.tts_locale` is an override for a regional variant, normally empty |
 | Recognition | `language.stt_locale()` — same shape, `settings.stt_locale` overrides |
 | Client chrome | The clients' own i18n dictionaries, moved by the same switch that PUTs `agent_language` |
@@ -240,9 +240,9 @@ both needed:
 
 ## Startup sequence
 
-`app/main.py`'s lifespan handler, in order: initialize the database → construct the LLM client → build the profile registry and register every persona → build the Telegram bot registry for agents with it enabled → build the capability registry and register tools in tier order (Legion → Skills → MCP → Adapters) → run a non-fatal health check across registered capabilities → build the WebSocket manager, agent registry, external-peer proxy, and memory recall cache → build the session manager → build the orchestrator and wire the dispatcher → start the detached turn runner and the Telegram gateway → publish everything onto `app.state` → wire Legion/dispatch completion report hooks → best-effort start the sandbox launcher and Forge peer launcher → sweep dispatch tickets orphaned by a prior crash → recover background jobs left `"running"` at boot → reconcile Lockdown Protocol state if it was left engaged.
+`app/main.py`'s lifespan handler, in order: initialize the database → construct the LLM client → build the profile registry and register Speda → build the Telegram bot registry → build the capability registry and register tools in tier order (Skills → MCP → Adapters) → run a non-fatal health check across registered capabilities → build the memory recall cache → build the session manager → build the orchestrator → start the detached turn runner and the Telegram gateway → publish everything onto `app.state` → wire the automations skill's trigger-turn dependencies → best-effort start the sandbox launcher → recover background jobs left `"running"` at boot.
 
-Shutdown reverses the pieces that need it: turn registry, dispatcher, Legion, Forge/sandbox launchers, Telegram polling, adapter/MCP disconnect, database close.
+Shutdown reverses the pieces that need it: turn registry, sandbox launcher, Telegram polling, adapter/MCP disconnect, database close.
 
 ---
 
@@ -259,4 +259,4 @@ SQLite (via `aiosqlite`) is the default and production store — `WAL` journal m
 uv run pytest
 ```
 
-`asyncio_mode = "auto"` — async tests need no explicit marker. Roughly three dozen test modules cover the orchestrator, dispatch, the named safety protocols, Legion, House Party, reminders, memory, navigation, and config precedence. The CI pipeline does not currently run this suite — it does a dependency sync, a byte-compile pass, and an import smoke test. Running `pytest` locally before a change lands is a manual step, not an enforced gate.
+`asyncio_mode = "auto"` — async tests need no explicit marker. Roughly two dozen test modules cover the orchestrator, the turn runner, reminders, memory (schema, sharding, splitting), navigation, news, voice streaming, and config precedence; 348 tests pass. The CI pipeline does not currently run this suite — it does a dependency sync, a byte-compile pass, and an import smoke test. Running `pytest` locally before a change lands is a manual step, not an enforced gate.

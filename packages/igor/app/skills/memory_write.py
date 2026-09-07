@@ -312,7 +312,6 @@ class NarrativeReviseSkill(Skill):
         "the list of chapters if the one you named does not exist."
     )
     read_only = False
-    restricted_to = frozenset({"orion", "speda"})
     input_schema = {
         "type": "object",
         "properties": {

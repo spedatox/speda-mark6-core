@@ -5,14 +5,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useChatContext } from '../store/chat'
 import { useSettings } from '../store/settings'
 import type { SSEEvent } from '../lib/types'
-import { streamChat, fetchSessions, attachStream, fetchActiveRuns, cancelRun, fetchWelcome, answerAsk, newRequestId, AttachGone } from '../lib/api'
+import { streamChat, fetchSessions, attachStream, fetchActiveRuns, cancelRun, fetchWelcome, newRequestId, AttachGone } from '../lib/api'
 import { useProfile } from './Sidebar'
 import MessageList from './MessageList'
 import InputBar from './InputBar'
-import { PermissionPrompt } from './InteractionPrompt'
 import AgentMark from './AgentMark'
 import { hasMark } from '../lib/agentMarks'
-import type { AppConfig, ImageBlock, DocBlock, UploadedFile, PendingAsk } from '../lib/types'
+import type { AppConfig, ImageBlock, DocBlock, UploadedFile } from '../lib/types'
 
 function makeId() {
   return Math.random().toString(36).slice(2, 10)
@@ -24,12 +23,7 @@ function WelcomeView({ config }: { onSend: (msg: string) => void; config: AppCon
   const hour = new Date().getHours()
   const salutation = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
   const displayName = settings.userName.trim() || profile?.userName || ''
-  // House Party takeover — the hero speaks protocol, not pleasantries.
-  const isWarroom = profile?.agentId === 'warroom'
-  const fullGreeting = (isWarroom
-    ? (displayName ? `All hands on deck, ${displayName}` : 'All hands on deck')
-    : (displayName ? `${salutation}, ${displayName}` : salutation)
-  ).toUpperCase()
+  const fullGreeting = (displayName ? `${salutation}, ${displayName}` : salutation).toUpperCase()
 
   const [typed, setTyped] = useState('')
   const [done, setDone] = useState(false)
@@ -48,16 +42,15 @@ function WelcomeView({ config }: { onSend: (msg: string) => void; config: AppCon
 
   // JARVIS remark — a contextual one-liner from the cheapest model, drawn from
   // memory. Fetched async so the greeting above never waits on it; it fades +
-  // types in beneath when it arrives. The war-room hero speaks protocol, not
-  // pleasantries, so it stays out of there.
+  // types in beneath when it arrives.
   const [remark, setRemark] = useState('')
   const [remarkTyped, setRemarkTyped] = useState('')
   useEffect(() => {
-    if (isWarroom || !profile?.agentId) return
+    if (!profile?.agentId) return
     let alive = true
     fetchWelcome(config, profile.agentId).then(t => { if (alive) setRemark(t) })
     return () => { alive = false }
-  }, [config, profile?.agentId, isWarroom])
+  }, [config, profile?.agentId])
   useEffect(() => {
     if (!remark) { setRemarkTyped(''); return }
     let i = 0
@@ -199,10 +192,6 @@ interface Props {
 export default function ChatMain({ config, onSelectSession }: Props) {
   const { state, dispatch } = useChatContext()
   const { settings } = useSettings()
-  // One card at a time: the peer parks the ask inside a single tool dispatch,
-  // so a second gated action cannot be raised until this one is answered.
-  const [pendingAsk, setPendingAsk] = useState<PendingAsk | null>(null)
-
   const abortRef = useRef<AbortController | null>(null)
   // request_id of the turn currently streaming into the visible session — the
   // stop button cancels THIS run on the backend (dropping the socket no longer
@@ -270,7 +259,7 @@ export default function ChatMain({ config, onSelectSession }: Props) {
     // was unrecoverable and got painted as an unreachable backend over a turn
     // that was running perfectly well server-side. Claim it, and the turn is
     // recoverable from the instant the owner hits Send.
-    let requestId = newRequestId()
+    const requestId = newRequestId()
     const ctrl = new AbortController()
     abortRef.current = ctrl
     runIdRef.current = requestId
@@ -361,8 +350,6 @@ export default function ChatMain({ config, onSelectSession }: Props) {
       documents: opts.documents,
       keepMessages: opts.keepMessages,
       regenerate: opts.regenerate,
-      // Forge workspace for Optimus jobs; ignored by in-process agents.
-      cwd: config.agentId === 'optimus' ? (settings.forgeCwd || undefined) : undefined,
       requestId,
     }
 
@@ -420,16 +407,7 @@ export default function ChatMain({ config, onSelectSession }: Props) {
         lastActivity = Date.now()
         if (event.type === 'start') {
           gotStart = true
-          // The backend USUALLY honours the id we minted, but it mints its own
-          // if ours collided with a live turn — so the start event is the
-          // authority on what this turn is called, and re-attach has to chase
-          // that id rather than the one we proposed.
-          if (event.request_id && event.request_id !== requestId) {
-            attachedRef.current.delete(requestId)
-            requestId = event.request_id
-          }
-          runIdRef.current = event.request_id ?? requestId
-          if (event.request_id) attachedRef.current.add(event.request_id)
+          runIdRef.current = event.request_id ?? null
           // Every SSE event carries session_id — tag this turn (and its bubble)
           // with the session it belongs to, so switching views can tell whether
           // the in-flight stream is ours and SELECT_SESSION can preserve it.
@@ -454,11 +432,6 @@ export default function ChatMain({ config, onSelectSession }: Props) {
         } else if (event.type === 'tool_result') {
           const d = event.data as { id: string; result: string }
           dispatch({ type: 'SET_TOOL_RESULT', payload: { id: assistantId, toolId: d.id, result: d.result } })
-        } else if (event.type === 'permission_request') {
-          // A peer's gate stopped an irreversible operation. The card replaces
-          // nothing and blocks nothing — the peer is already counting down and
-          // will deny on its own if the owner never answers.
-          setPendingAsk(event.data as PendingAsk)
         } else if (event.type === 'file') {
           dispatch({ type: 'ADD_FILE', payload: { id: assistantId, file: event.data as import('../lib/types').FileMeta } })
         } else if (event.type === 'done') {
@@ -545,7 +518,7 @@ export default function ChatMain({ config, onSelectSession }: Props) {
       }
       forceUpdate(n => n + 1)
     }
-  }, [state.activeSessionId, state.isStreaming, config, settings.model, settings.systemPrompt, settings.forgeCwd,
+  }, [state.activeSessionId, state.isStreaming, config, settings.model, settings.systemPrompt,
       settings.streamReconnectAttempts, settings.streamReconnectDelayMs, settings.streamStallSeconds, settings.streamDeadSeconds,
       dispatch])
 
@@ -652,12 +625,7 @@ export default function ChatMain({ config, onSelectSession }: Props) {
           } else if (event.type === 'tool_result') {
             const d = event.data as { id: string; result: string }
             dispatch({ type: 'SET_TOOL_RESULT', payload: { id: assistantId, toolId: d.id, result: d.result } })
-          } else if (event.type === 'permission_request') {
-          // A peer's gate stopped an irreversible operation. The card replaces
-          // nothing and blocks nothing — the peer is already counting down and
-          // will deny on its own if the owner never answers.
-          setPendingAsk(event.data as PendingAsk)
-        } else if (event.type === 'file') {
+          } else if (event.type === 'file') {
             dispatch({ type: 'ADD_FILE', payload: { id: assistantId, file: event.data as import('../lib/types').FileMeta } })
           } else if (event.type === 'done') {
             if (handle != null) cancelAnimationFrame(handle)
@@ -726,16 +694,6 @@ export default function ChatMain({ config, onSelectSession }: Props) {
 
   const isEmpty = state.messages.length === 0
 
-  // Answering is fire-and-forget: the decision goes to Igor, Igor relays it to
-  // the peer, and the peer resumes or reports the refusal in its own stream.
-  // A failed POST means the ask already expired, which the peer has already
-  // treated as a denial — so the card just clears either way.
-  const resolveAsk = useCallback(async (approved: boolean, remember: boolean) => {
-    const ask = pendingAsk
-    setPendingAsk(null)
-    if (ask) await answerAsk(config, ask.ask_id, approved, remember)
-  }, [pendingAsk, config])
-
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {isEmpty
@@ -748,7 +706,6 @@ export default function ChatMain({ config, onSelectSession }: Props) {
           />
         )
       }
-      {pendingAsk && <PermissionPrompt ask={pendingAsk} onResolve={resolveAsk} />}
       <InputBar onSend={send} onStop={stop} config={config} />
     </div>
   )

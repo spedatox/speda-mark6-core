@@ -54,7 +54,7 @@ class Skill(ABC):
     # Hard per-agent restriction: when set, ONLY these agent_ids may see or call
     # this skill, regardless of their (inclusion) tool_allowlist. Use for
     # privileged capabilities that must never leak to the general roster — e.g.
-    # system_ops is scoped to {"orion"} alone. None = available to every agent
+    # None = available to every agent
     # whose allowlist permits it (the normal case).
     restricted_to: frozenset[str] | None = None
 

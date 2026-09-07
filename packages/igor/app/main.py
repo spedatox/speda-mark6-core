@@ -29,45 +29,26 @@ async def lifespan(app: FastAPI):
     await init_db()
     logger.info("startup_db_ready")
 
-    # ── 2. LLM Client (created early — registry needs it for the Legion) ────────
+    # ── 2. LLM Client ─────────────────────────────────────────────────────────
     from app.services.llm_client import LLMClient
 
     llm_client = LLMClient()
 
-    # ── 2.5 Profiles (multi-tenant) + dispatch primitive ───────────────────────
-    # Profiles are constructed before the registry because the dispatch_agent
-    # skill's tool schema is built from the roster. The dispatcher itself is
-    # created empty here and late-bound to the orchestrator via wire() below.
-    from app.core.dispatch import AgentDispatcher
+    # ── 2.5 Profile ───────────────────────────────────────────────────────────
+    # Core is single-agent. The registry stays because the rest of the engine
+    # (orchestrator, model resolution, welcome cache) is written against a
+    # roster interface — it is simply a roster of one, and there is no
+    # dispatcher for it to feed.
     from app.profiles.registry import ProfileRegistry
-    from app.profiles.atomix import AtomixProfile
-    from app.profiles.centurion import CenturionProfile
-    from app.profiles.nightcrawler import NightCrawlerProfile
-    from app.profiles.optimus import OptimusProfile
-    from app.profiles.orion import OrionProfile
-    from app.profiles.sentinel import SentinelProfile
     from app.profiles.speda import SPEDAProfile
-    from app.profiles.ultron import UltronProfile
-    from app.profiles.warroom import WarRoomProfile
 
     profiles = ProfileRegistry()
-    profiles.register(SPEDAProfile())       # orchestrator
-    profiles.register(WarRoomProfile())     # House Party command channel (Speda alias)
-    profiles.register(UltronProfile())      # academic research
-    profiles.register(AtomixProfile())      # personal health
-    profiles.register(SentinelProfile())    # finance
-    profiles.register(NightCrawlerProfile())  # OSINT / web surveillance
-    profiles.register(CenturionProfile())   # cyber security
-    profiles.register(OptimusProfile())     # systems / code / infrastructure
-    profiles.register(OrionProfile())       # Mark VI maintenance — memory custodian
+    profiles.register(SPEDAProfile())
 
-    dispatcher = AgentDispatcher()
-
-    # ── 2.6 Telegram bot fleet (one bot per agent with a presence) ─────────────
-    # Built here (after profiles, before Tier-1 skills) so the delivery skill can
-    # take the registry in its constructor — same pattern as the dispatch skill.
-    # Only profiles that declare telegram_enabled get a bot; only those with a
-    # configured token are actually constructed.
+    # ── 2.6 Telegram bot ──────────────────────────────────────────────────────
+    # Built here (after the profile, before Tier-1 skills) so the delivery skill
+    # can take the registry in its constructor. Core has exactly one agent, so
+    # this is one bot — constructed only when its token is configured.
     from app.telegram.registry import TelegramBotRegistry
 
     telegram_agent_ids = {
@@ -80,21 +61,14 @@ async def lifespan(app: FastAPI):
 
     registry = CapabilityRegistry(client=llm_client, profiles=profiles)
 
-    # Tier 0 — The Legion (wire name "Task", MUST be registered first).
-    # Provider-agnostic workers: model resolution routes through the parent
-    # agent's profile, so the Legion runs on whatever provider the chat does.
-    registry.register_legion()
-
     # Tier 1 — Python Skills
     # read_skill is the progressive-disclosure meta-tool (registered first so it's
     # always available when Claude wants to load full SKILL.md instructions).
     from app.skills.automations import AutomationsSkill
     from app.skills.budget import BudgetModeSkill
-    from app.skills.dispatch import AgentChannelSkill, DispatchAgentSkill, DispatchStatusSkill, HousePartySkill
     from app.skills.sandbox import RunCommandSkill, DeliverFileSkill
     from app.skills.toolsets import UseToolsetSkill
     from app.skills.documents import DocumentsSkill
-    from app.skills.hisar import HisarSkill
     from app.skills.save_file import SaveFileSkill
     from app.skills.atomix_reports import GenerateDailyTrainingProgramSkill
     from app.skills.memory import MemorySkill
@@ -122,7 +96,6 @@ async def lifespan(app: FastAPI):
     from app.skills.semantic_search import SemanticSearchSkill
     from app.skills.stt import STTSkill
     from app.skills.system import SystemSkill
-    from app.skills.system_ops import SystemOpsSkill
     from app.skills.tts import TTSSkill
 
     await registry.register_skill(ReadSkillSkill())
@@ -148,10 +121,8 @@ async def lifespan(app: FastAPI):
     await registry.register_skill(SendTelegramFileSkill(telegram_bots))
     await registry.register_skill(DocumentsSkill())
     await registry.register_skill(SaveFileSkill())
-    await registry.register_skill(GenerateDailyTrainingProgramSkill())   # Atomix-only (restricted_to)
-    await registry.register_skill(HisarSkill())
+    await registry.register_skill(GenerateDailyTrainingProgramSkill())
     await registry.register_skill(SystemSkill())
-    await registry.register_skill(SystemOpsSkill())   # Orion-only (restricted_to)
     await registry.register_skill(BudgetModeSkill())
     await registry.register_skill(RunCommandSkill())
     await registry.register_skill(DeliverFileSkill())
@@ -180,7 +151,7 @@ async def lifespan(app: FastAPI):
     from app.skills.pharmacies import OnDutyPharmacySkill
     await registry.register_skill(OnDutyPharmacySkill())
     # Health desk — the owner's biometrics, synced from the phone via Health
-    # Connect. Read-only; unrestricted so Speda can relay without a dispatch.
+    # Connect. Read-only.
     from app.skills.health_data import HealthDataSkill
     await registry.register_skill(HealthDataSkill())
 
@@ -204,9 +175,9 @@ async def lifespan(app: FastAPI):
         from app.skills.transit import BusArrivalsSkill
         await registry.register_skill(BusArrivalsSkill())
 
-    # Academic desk — Ultron's course attendance ledger, written from the watch
-    # (Ultron Wear) and read back here. check_attendance is read-only and
-    # unrestricted so Speda can answer "kaç hakkım kaldı" without a dispatch;
+    # Academic desk — the course attendance ledger, written from the watch
+    # (Ultron Wear) and read back here. check_attendance is read-only, so Speda
+    # can answer "kaç hakkım kaldı" directly;
     # ask_attendance is the push side, normally driven by the n8n per-lecture
     # trigger. save_schedule is the other direction — the owner's timetable,
     # authored in chat, replacing what the watch caches — and pushes a resync
@@ -231,50 +202,6 @@ async def lifespan(app: FastAPI):
     # startup, wired in later at the same spot the trigger reporters are.
     automations_skill = AutomationsSkill()
     await registry.register_skill(automations_skill)
-    await registry.register_skill(DispatchAgentSkill(
-        dispatcher,
-        # Session-scope aliases (warroom) are not dispatch targets — keep them
-        # out of the tool schema, matching AgentDispatcher.known_agents().
-        [(p.agent_id, p.domain) for p in profiles.roster() if p.dispatch_target],
-    ))
-    await registry.register_skill(AgentChannelSkill())
-    await registry.register_skill(DispatchStatusSkill())
-    await registry.register_skill(HousePartySkill())
-    # Orion's push of the composed owner memory out to a connected Forge peer
-    # (docs: the Forge owner-memory bridge). Shares `dispatcher` with
-    # DispatchAgentSkill above — same late-bind-via-wire() pattern, since
-    # WebSocketManager doesn't exist yet at this point in startup.
-    from app.skills.forge_sync import SyncOwnerMemoryToForgeSkill
-    await registry.register_skill(SyncOwnerMemoryToForgeSkill(dispatcher))
-    # Emergency inbound containment. Owner-only by construction (the skill
-    # refuses any non-user trigger) — see app/skills/lockdown.py.
-    from app.skills.lockdown import LockdownProtocolSkill
-
-    await registry.register_skill(LockdownProtocolSkill())
-    # Host resource reclamation. Orion/Optimus only (restricted_to), and the
-    # destructive tiers refuse any non-user trigger — see app/skills/lifeboat.py.
-    from app.skills.lifeboat import LifeboatProtocolSkill
-
-    await registry.register_skill(LifeboatProtocolSkill())
-    # Moving the deployment to a new domain. Orion/Optimus only, and every
-    # phase refuses a non-user trigger — see app/skills/doormat.py.
-    from app.skills.doormat import DoormatProtocolSkill
-
-    await registry.register_skill(DoormatProtocolSkill())
-    # Database backup to the owner's Drive. Orion/Optimus only; `backup` is the
-    # one action an automated trigger may take — see app/skills/octavius.py.
-    from app.skills.octavius import OctaviusProtocolSkill
-
-    await registry.register_skill(OctaviusProtocolSkill())
-    # The owner's launch rail. Speda only, owner-only, and it can ARM but never
-    # fire — the countdown on their screen is what fires. See app/skills/skyfall.py.
-    from app.skills.skyfall import SkyfallProtocolSkill
-
-    await registry.register_skill(SkyfallProtocolSkill())
-    # Legion background-ticket retrieval (Tier 0's async mode companion).
-    from app.skills.legion import LegionStatusSkill
-    await registry.register_skill(LegionStatusSkill())
-
     # OSINT / threat-intelligence suite (ip-api, AbuseIPDB, abuse.ch URLhaus/
     # ThreatFox/MalwareBazaar, HIBP Pwned Passwords, Ahmia dark-web search).
     # All read-only + network-gated (dropped in the Dead Zone).
@@ -303,58 +230,31 @@ async def lifespan(app: FastAPI):
         extra={"tools": len(registry.list_tools()), "degraded": degraded},
     )
 
-    # ── 4. WebSocket Manager + Agent Registry + External Chat Proxy ────────────
-    from app.core.agent_registry import AgentRegistry
-    from app.core.external_proxy import ExternalAgentProxy
-    from app.services.pending_asks import PendingAsks
+    # ── 5. Recall cache ───────────────────────────────────────────────────────
     from app.skills.memory import MemoryRecallCache
-    from app.websocket.manager import WebSocketManager
 
-    # Constructed here rather than at 7 because the external proxy needs it too:
-    # an external peer runs the owner's turn, so it must know what the owner's
-    # in-process agents know. One instance for the process (Rule 6).
+    # One instance for the process (Rule 6).
     memory_cache = MemoryRecallCache()
 
-    ws_manager = WebSocketManager()
-    agent_registry = AgentRegistry(ws_manager)
-    agent_proxy = ExternalAgentProxy(ws_manager, memory_cache)
-    pending_asks = PendingAsks(ws_manager)
-
-    # ── 5. Session Manager ─────────────────────────────────────────────────────
+    # ── 6. Session Manager ─────────────────────────────────────────────────────
     from app.core.session_manager import SessionManager
 
     session_manager = SessionManager()
 
-    # ── 7. Orchestrator (reuses the client already injected into the registry) ──
-    # Profiles were constructed at 2.5 — the dispatch skill's schema needed them.
+    # ── 7. Orchestrator (reuses the client already injected into the registry) ─
     from app.core.orchestrator import AgentOrchestrator
     from app.services.welcome import WelcomeCache
 
     # One instance each for the process (Rule 6) — threaded into the
     # orchestrator/router instead of living as bare module globals.
-    # (memory_cache is built at 4, above — the external proxy needs it.)
     welcome_cache = WelcomeCache()
     orchestrator = AgentOrchestrator(registry, llm_client, profiles, memory_cache)
 
-    # Late-bind the dispatch primitive now that the full engine exists.
-    dispatcher.wire(
-        orchestrator=orchestrator,
-        profiles=profiles,
-        session_manager=session_manager,
-        ws_manager=ws_manager,
-        # The same registry the background legionnaires stream into. Shared
-        # rather than duplicated: both mint their ticket from an AgentMessage
-        # row id, so the id spaces cannot collide, and sharing means a spawned
-        # peer job appears in the tray and attaches over /legion/attach with no
-        # second endpoint and no client change.
-        runs=registry.legion_runs,
-    )
-
     # ── 7.5 Telegram channel — gateway + ingress ───────────────────────────────
     # The gateway turns an inbound update into a normal orchestrator run; it needs
-    # the full engine, so it is built here (after the orchestrator + proxy exist)
-    # and ingress is started per settings.telegram_mode (webhook sets per-bot
-    # webhooks; polling spawns one long-poll task per bot; off = outbound-only).
+    # the full engine, so it is built here (after the orchestrator exists) and
+    # ingress is started per settings.telegram_mode (webhook sets the bot's
+    # webhook; polling spawns a long-poll task; off = outbound-only).
     from app.telegram.gateway import TelegramGateway
 
     # The detached turn runner is created HERE, before the gateway and its
@@ -370,26 +270,17 @@ async def lifespan(app: FastAPI):
         session_manager=session_manager,
         profiles=profiles,
         bots=telegram_bots,
-        ws_manager=ws_manager,
-        agent_proxy=agent_proxy,
-        dispatcher=dispatcher,
         turns=turns,
     )
     telegram_poll_tasks = await telegram_bots.start(telegram_gateway)
 
     # ── 8. Inject into app.state ───────────────────────────────────────────────
     app.state.registry = registry
-    app.state.agent_registry = agent_registry
-    app.state.agent_proxy = agent_proxy
-    # Permission asks relayed from external peers (the Forge's safety gate).
-    app.state.pending_asks = pending_asks
     app.state.orchestrator = orchestrator
     app.state.memory_cache = memory_cache
     app.state.welcome_cache = welcome_cache
-    app.state.ws_manager = ws_manager
     app.state.session_manager = session_manager
     app.state.profiles = profiles
-    app.state.dispatcher = dispatcher
     app.state.telegram_bots = telegram_bots
     app.state.telegram_gateway = telegram_gateway
 
@@ -401,72 +292,37 @@ async def lifespan(app: FastAPI):
     # here.
     app.state.turns = turns
 
-    # Background legionnaires report in when they finish. Wired HERE, not at
-    # Tier-0 registration: the callback closes over the orchestrator, the turn
-    # registry and the session manager, and none of those exist yet when the
-    # Legion is registered first. A completed worker now starts a real push turn
-    # on the agent that deployed it instead of leaving the result sitting in a
-    # ticket until someone thinks to ask.
-    from app.core.trigger_runner import make_dispatch_reporter, make_legion_reporter
-
+    # A finished background job reports in on the agent that started it. Wired
+    # HERE rather than at registration: the callback closes over the
+    # orchestrator, the turn registry and the session manager, none of which
+    # exist earlier in startup.
     reporter_deps = {
         "profiles": profiles,
         "orchestrator": orchestrator,
         "turns": app.state.turns,
         "session_manager": session_manager,
         "telegram_bots": telegram_bots,
-        "agent_proxy": agent_proxy,
-        "ws_manager": ws_manager,
     }
-    registry.set_legion_report_hook(make_legion_reporter(**reporter_deps))
-    # Same dependency set, same reason: action='test' on manage_automations
-    # needs to start a real trigger turn, and this is the first point in
-    # startup where everything it needs actually exists.
+    # action='test' on manage_automations needs to start a real trigger turn,
+    # and this is the first point in startup where everything it needs exists.
     automations_skill.wire(**reporter_deps)
-    # And the same for a BACKGROUND dispatch to another agent: when it lands, the
-    # agent that sent it is woken with the answer and delivers it, instead of the
-    # owner having to ask whether it finished.
-    dispatcher.set_report_hook(make_dispatch_reporter(**reporter_deps))
 
-    # ── 9. Child processes — the local sandbox + the Forge peer ────────────────
-    # Both are best-effort: a missing dependency logs a warning and Speda keeps
-    # running. The sandbox gives the run_command skill a computer without Docker;
-    # the Forge peer is the standalone Optimus engine that connects back over the
-    # agents WebSocket (in-process OptimusProfile is the fallback when offline).
-    from app.services.forge_peer import ForgePeerLauncher
+    # ── 9. Child process — the local sandbox ──────────────────────────────────
+    # Best-effort: a missing dependency logs a warning and Speda keeps running.
+    # The sandbox gives the run_command skill a computer without Docker.
     from app.services.sandbox_launcher import SandboxLauncher
 
     sandbox_launcher = SandboxLauncher()
-    forge_launcher = ForgePeerLauncher()
     await sandbox_launcher.start()
-    await forge_launcher.start()
     app.state.sandbox_launcher = sandbox_launcher
-    app.state.forge_launcher = forge_launcher
 
-    # ── 10. Close out dispatches orphaned by the previous process ─────────────
-    # A dispatch/legion ticket only ever runs in-process, so anything still
-    # marked "running" at boot died with the last process. Left alone it shows
-    # up in the comms tray as a task that has been working for weeks.
-    from app.core.dispatch import sweep_stale_dispatches
-
-    await sweep_stale_dispatches()
-
-    # ── 11. Recover post-turn work the previous process did not finish ────────
-    # Same reasoning as the dispatch sweep, one layer down: background_jobs left
-    # "running" at boot died with the last process. Unlike dispatches these are
-    # retryable, so they go back on the queue and a detached drain works through
-    # them while the app serves requests. See app/services/task_queue.py.
+    # ── 10. Recover post-turn work the previous process did not finish ────────
+    # background_jobs left "running" at boot died with the last process. They
+    # are retryable, so they go back on the queue and a detached drain works
+    # through them while the app serves requests. See app/services/task_queue.py.
     from app.services.task_queue import recover_on_startup
 
     reclaimed_jobs = await recover_on_startup()
-
-    # ── 12. Re-apply containment if the Lockdown Protocol is engaged ──────────
-    # Firewall rules live in the kernel, not on disk. A restart during an
-    # incident would otherwise reopen the sealed ports while every client still
-    # displayed LOCKDOWN ACTIVE. No-op when the flag is clear.
-    from app.services.lockdown import reconcile_on_startup
-
-    await reconcile_on_startup()
 
     logger.info(
         "startup_complete",
@@ -496,9 +352,6 @@ async def lifespan(app: FastAPI):
     if loop_watch is not None:
         loop_watch.cancel()
     await app.state.turns.shutdown()
-    await dispatcher.shutdown()
-    await registry.legion_shutdown()
-    await forge_launcher.stop()
     await sandbox_launcher.stop()
     for task in telegram_poll_tasks:
         task.cancel()
@@ -598,11 +451,15 @@ def create_app() -> FastAPI:
     app.add_middleware(SecurityHeadersMiddleware)
 
     # Routers
-    from app.routers import admin, agents, automations, browser as browser_router, chat, health, trigger, import_chats, files, media, connections, mail, outlook, memory, navigation, aircraft, reminders, telegram, news, academic, web_watch, voice, config as config_router, hisar, lifeboat as lifeboat_router, doormat as doormat_router, octavius as octavius_router, skyfall as skyfall_router, legion as legion_router
+    from app.routers import (
+        academic, admin, agents, aircraft, automations, browser as browser_router,
+        chat, config as config_router, connections, files, health, import_chats,
+        mail, media, memory, navigation, news, outlook, reminders, telegram,
+        trigger, voice, web_watch,
+    )
 
     app.include_router(health.router)
     app.include_router(chat.router)
-    app.include_router(legion_router.router)
     app.include_router(trigger.router)
     app.include_router(agents.router)
     app.include_router(admin.router)
@@ -621,16 +478,11 @@ def create_app() -> FastAPI:
     app.include_router(mail.router)
     app.include_router(outlook.router)
     app.include_router(web_watch.router)
-    app.include_router(lifeboat_router.router)
-    app.include_router(doormat_router.router)
-    app.include_router(octavius_router.router)
-    app.include_router(skyfall_router.router)
     app.include_router(reminders.router)
     app.include_router(navigation.router)
     app.include_router(aircraft.router)
     app.include_router(voice.router)
     app.include_router(config_router.router)
-    app.include_router(hisar.router)
 
     return app
 

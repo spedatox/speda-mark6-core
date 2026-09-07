@@ -4,7 +4,7 @@
 // Local message cache — a per-session mirror of the transcript in localStorage.
 //
 // The backend is the source of truth, but two situations leave the owner staring
-// at nothing: (1) the connection drops mid-turn (e.g. Orion restarts Igor) and
+// at nothing: (1) the connection drops mid-turn (e.g. Igor restarts) and
 // the answer was never persisted server-side; (2) the app opens with no network,
 // so history can't be fetched at all. This cache is the offline/failure fallback:
 // we snapshot each session's messages as turns settle, and hydrate from it when

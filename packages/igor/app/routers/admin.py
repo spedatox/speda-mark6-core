@@ -79,12 +79,11 @@ _USER_ID = 1
 
 
 def _memory_model() -> str:
-    """Cheap tier on whatever provider the owner has routed Orion to (Rule 10 —
-    never a hardcoded id). Extraction and composition are background work."""
-    from app.profiles.orion import OrionProfile
+    """Cheap tier on whatever provider the owner has routed the agent to (Rule 10
+    — never a hardcoded id). Extraction and composition are background work."""
+    from app.profiles.speda import SPEDAProfile
 
-    profile = OrionProfile()
-    return profile.allocate_model("n8n")
+    return SPEDAProfile().allocate_model("n8n")
 
 
 @router.post("/memory/shadow")
@@ -221,7 +220,7 @@ async def memory_verify(request: Request) -> JSONResponse:
 
     This is the mechanism whose absence let a corrupted generation sit in
     academic.md for three weeks, a paragraph live above the H1 in current.md, and
-    ops.md route agents to a directory renamed months ago. Orion runs it nightly;
+    ops.md route the agent to a directory renamed months ago. It runs nightly;
     it is exposed here so the owner can see the same report on demand.
     """
     from app.database import AsyncSessionLocal
@@ -328,7 +327,7 @@ async def memory_compose(request: Request) -> JSONResponse:
     """
     Rebuild owner.md and current.md from the record with a model.
 
-    Normally part of Orion's nightly audit. Every claim must cite observation ids
+    Normally part of the nightly audit. Every claim must cite observation ids
     that exist, or the composition is rejected and the previous version stands —
     so a bad run is a no-op, never a corrupted biography.
     """

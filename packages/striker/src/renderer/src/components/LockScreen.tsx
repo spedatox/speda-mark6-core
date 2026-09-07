@@ -21,7 +21,7 @@ import { useT } from '../lib/i18n'
  * is a state of this screen, not a second screen stacked on top of it, so there
  * is never a moment where a keystroke goes somewhere the owner cannot see.
  *
- * Sibling in spirit to LockdownActivation: same vocabulary (hairlines, mono
+ * Same vocabulary as the rest of the deck (hairlines, mono
  * labels in caps, one accent), opposite job — that one is a cinematic that
  * plays and leaves, this one stays until it is answered.
  */
@@ -45,10 +45,10 @@ const KEYFRAMES = `
 
 export default function LockScreen({ agent, agents, dwellMs, hasPasscode, screensaverSeconds, onUnlock }: {
   /** Whoever the deck was on when it locked — the keypad states that agent.
-   *  Not the house brand: locking mid-conversation with Centurion and coming
+   *  Not the house brand: locking mid-conversation and coming
    *  back to a Speda screen loses your place. */
   agent: SaverAgent
-  /** The roster the screensaver parades. Striker passes its single agent. */
+  /** The card the screensaver shows. Core passes its single agent. */
   agents: SaverAgent[]
   /** How long each agent holds before dissolving into the next. */
   dwellMs: number

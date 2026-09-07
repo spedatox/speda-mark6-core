@@ -43,7 +43,7 @@ class DocumentSpec:
     summary: str
     # The only agent that may write it. None = shared across the roster.
     # Recorded from the revision trail, not invented: academic.md was written by
-    # ultron 19 times and nobody else, wellness.md by atomix 11 of 12.
+    # speda 19 times and nobody else, wellness.md by speda 11 of 12.
     owner_agent: str | None = None
     # Injected into every turn's system prompt. Four files are, and they are the
     # ones whose size is billed on every request by every agent.
@@ -113,7 +113,7 @@ class DocumentSpec:
 # A topic whose index grows without bound may THEN be SHARDED by that key: the
 # member stays one topic and becomes a directory, one file per key
 # (`finance/ledger/2026-09.md`). The owner asked for this on the ledger, and it
-# is his ledger. What it buys is that a month is opened as a month — Sentinel
+# is his ledger. What it buys is that a month is opened as a month — the agent
 # reads 700 bytes to answer "what came in in September" instead of every month
 # ever recorded. What it costs is that "compare July with August" is two reads
 # instead of one. Nothing is cut in half by it: a repayment schedule was never
@@ -233,6 +233,8 @@ class CollectionSpec:
     required: tuple[str, ...] = ()
     markers: tuple[str, ...] = ()               # literal strings every member carries
     max_bytes: int = 8_000
+    # Vestigial on Core: nothing sets it, because there is one agent and it owns
+    # every document. Kept so the shape a DocumentSpec is built from is unchanged.
     owner_agent: str | None = None
     split_from: str = ""                        # the monolith it replaces
     entity_level: int = 2                       # heading level entities sat at there
@@ -255,11 +257,10 @@ class CollectionSpec:
     # folder becomes the place everything actually lives — the junk drawer that
     # this whole architecture exists to abolish.
     #
-    # So the OWNING agent may add a topic to its own folder. Nobody else may:
-    # `owner_agent` is still enforced, so Ultron extends `academic/` and cannot
-    # touch `finance/`. The declared members keep their exact grammar; a new one
-    # gets the collection's default. Extensibility is what makes "file it in the
-    # domain that owns the subject" an instruction an agent can actually follow.
+    # So a topic may be added to its folder. The declared members keep their
+    # exact grammar; a new one gets the collection's default. Extensibility is
+    # what makes "file it in the domain that owns the subject" an instruction
+    # an agent can actually follow.
     extensible: bool = True
 
     @property
@@ -353,14 +354,13 @@ SECTION_COLLECTIONS: tuple[CollectionSpec, ...] = (
         kind=LEDGER,
         summary="Training — directives, profile, program, gym, session log",
         entity_noun="topic",
-        owner_agent="atomix",
         split_from="/memories/wellness.md",
         entity_level=2,
         members=(
             MemberSpec(
                 stem="directives", title="System Directives & Output Rules",
                 takes=("1. SYSTEM DIRECTIVES & OUTPUT RULES",),
-                summary="How Atomix reports training",
+                summary="How the health desk reports training",
             ),
             MemberSpec(
                 stem="profile", title="Athlete Profile & Status",
@@ -397,7 +397,6 @@ SECTION_COLLECTIONS: tuple[CollectionSpec, ...] = (
         kind=LEDGER,
         summary="University — calendar, KPSS, materials, Erasmus, standing",
         entity_noun="topic",
-        owner_agent="ultron",
         split_from="/memories/academic.md",
         entity_level=2,
         members=(
@@ -433,7 +432,6 @@ SECTION_COLLECTIONS: tuple[CollectionSpec, ...] = (
         kind=LEDGER,
         summary="Money — the monthly ledger, plus standing reference",
         entity_noun="topic",
-        owner_agent="sentinel",
         split_from="/memories/finance.md",
         entity_level=2,
         members=(
@@ -484,7 +482,6 @@ SECTION_COLLECTIONS: tuple[CollectionSpec, ...] = (
         kind=LEDGER,
         summary="The host — runbook and action log",
         entity_noun="topic",
-        owner_agent="orion",
         split_from="/memories/ops.md",
         entity_level=2,
         members=(
@@ -501,7 +498,7 @@ SECTION_COLLECTIONS: tuple[CollectionSpec, ...] = (
             MemberSpec(
                 stem="actions", title="Action Log",
                 takes=("Part 2: Action Log",),
-                summary="What Orion did to the host, dated",
+                summary="What the nightly audit did to the host, dated",
                 index_pattern=r"^\d{4}-\d{2}-\d{2}",
                 index_level=2,
                 entry_style="bullets",
@@ -514,7 +511,6 @@ SECTION_COLLECTIONS: tuple[CollectionSpec, ...] = (
         kind=LEDGER,
         summary="Security learning — tracks, progress, resources",
         entity_noun="topic",
-        owner_agent="centurion",
         split_from="/memories/cybersec.md",
         entity_level=2,
         members=(
@@ -947,7 +943,6 @@ SPECS: dict[str, DocumentSpec] = {
         path="/memories/finance.md",
         kind=LEDGER,
         summary="Monthly ledger — incomes, expenses, debts, repayment schedules",
-        owner_agent="sentinel",
         index_pattern=r"^\d{4}-\d{2}$",
         index_level=2,
         entry_style="table",
@@ -972,7 +967,6 @@ SPECS: dict[str, DocumentSpec] = {
         path="/memories/wellness.md",
         kind=LEDGER,
         summary="Training protocol, athlete profile and session log",
-        owner_agent="atomix",
         index_pattern=r"^\d{4}-\d{2}-\d{2}",
         index_level=3,
         index_parent="5. LOG (Chronological)",
@@ -994,7 +988,6 @@ SPECS: dict[str, DocumentSpec] = {
         path="/memories/academic.md",
         kind=LEDGER,
         summary="Academic calendar, KPSS preparation, course materials, standing",
-        owner_agent="ultron",
         sections=(
             "KPSS 2026", "Akademik Takvim", "Ders Materyalleri",
             "Erasmus+", "Session Durumu", "Akademik Durum",
@@ -1011,7 +1004,6 @@ SPECS: dict[str, DocumentSpec] = {
         path="/memories/cybersec.md",
         kind=LEDGER,
         summary="Cybersecurity learning journey",
-        owner_agent="centurion",
         sections=("Structure", "Tracks", "Progress Log", "Resources",
                   "Certifications / Goals"),
         max_bytes=24_000,
@@ -1021,7 +1013,6 @@ SPECS: dict[str, DocumentSpec] = {
         path="/memories/ops.md",
         kind=LEDGER,
         summary="Runbook and action log for the host",
-        owner_agent="orion",
         sections=("Part 1: Self-Guide — Service Map & Procedures",
                   "Part 2: Action Log"),
         index_pattern=r"^\d{4}-\d{2}-\d{2}",

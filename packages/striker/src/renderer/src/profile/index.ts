@@ -6,10 +6,9 @@ import type { AppProfile } from './types'
 
 /**
  * Speda Mark VI Core is single-agent. There is no roster, no switcher and no
- * VITE_AGENT selection — this is the one and only profile the app ever renders.
- * (Heartbreaker keeps the full multi-brand BRANDS map; Core deliberately does
- * not.) The accent stays Speda cyan; the neutral-dark palette lives statically
- * in theme/striker.css, so nothing here re-hues the UI at runtime.
+ * VITE_AGENT selection — this is the one and only profile the app ever
+ * renders. The accent stays Speda cyan; the neutral-dark palette lives
+ * statically in theme/striker.css, so nothing here re-hues the UI at runtime.
  */
 const SPEDA_CORE: AppProfile = {
   agentId: 'speda',

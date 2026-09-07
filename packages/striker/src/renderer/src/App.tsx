@@ -24,8 +24,8 @@ const SAVER_ROSTER = [{
 }]
 
 /**
- * Speda Mark VI Core — the single-agent shell. Unlike Heartbreaker there is no
- * roster, no agent switcher, no war room / House Party takeover and no runtime
+ * Speda Mark VI Core — the single-agent shell. Unlike the full build there is no
+ * roster, no agent switcher, no all-hands takeover and no runtime
  * theme morph: the agent is always Speda and the palette is static (striker.css).
  * The ambient NeuralBackground stays; the HUD frame does not.
  */

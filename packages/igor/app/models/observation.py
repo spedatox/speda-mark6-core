@@ -55,7 +55,7 @@ class Observation(Base):
     __table_args__ = (
         # Recall's hot path: this owner's live observations, newest first.
         Index("ix_observations_user_live", "user_id", "deleted_at", "created_at"),
-        # "What has Sentinel learned lately?" and the per-agent audit view.
+        # "What has been learned lately?" and the audit view.
         Index("ix_observations_user_observer", "user_id", "observer"),
         # The renderers' hot path: every surface is a query over (subject, domain)
         # narrowed by whether the fact is still true.

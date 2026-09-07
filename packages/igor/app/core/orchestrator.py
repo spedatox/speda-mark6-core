@@ -43,16 +43,16 @@ def _carries_image(history: list[dict]) -> bool:
 
 async def _timed(
     tool_name: str, args: dict, context: AgentContext, registry: CapabilityRegistry,
-    *, tool_call_id: str | None = None, emit=None,
+    *, tool_call_id: str | None = None,
 ):
     """Run one tool call and report how long it took, for the tool_calls audit
     row — `asyncio.gather` alone loses this once several calls run concurrently
     and finish at different times.
 
-    `tool_call_id`/`emit` are Legion-only passthroughs (see
-    `CapabilityRegistry.execute`) — inert for every other tool."""
+    `tool_call_id` is a passthrough to `CapabilityRegistry.execute` — inert for
+    every tool registered on Core."""
     start = time.monotonic()
-    result = await registry.execute(tool_name, args, context, tool_call_id=tool_call_id, emit=emit)
+    result = await registry.execute(tool_name, args, context, tool_call_id=tool_call_id)
     return result, int((time.monotonic() - start) * 1000)
 
 
@@ -63,7 +63,7 @@ class AgentOrchestrator:
 
     Stateless with respect to identity: it holds the ProfileRegistry, not one
     profile, and resolves the agent per request from context.agent_id. The same
-    loop serves every in-process agent (Speda + the five Superior Six).
+    loop serves the in-process agent (Speda).
 
     Router contract: call run(context) and stream the SSEEvents.
     Zero logic in the router beyond that.
@@ -168,10 +168,10 @@ class AgentOrchestrator:
         # EVERY turn and read ~never. Worse than no caching at all.
         stable_core = self.build_system_prompt(context)
 
-        # Per-agent tool scoping: the profile's declared allowlist (None = the
-        # full registry, e.g. Speda the orchestrator) governs what this agent can
-        # see and load. Resolved once here and stored on the context so the
-        # toolset catalog, the tool list, and Legion workers all share one scope.
+        # Tool scoping: the profile's declared allowlist (None = the full
+        # registry, which is what Core uses) governs what the agent can see and
+        # load. Resolved once here and stored on the context so the toolset
+        # catalog and the tool list share one scope.
         allowlist = (
             set(profile.tool_allowlist) if profile.tool_allowlist is not None else None
         )
@@ -181,90 +181,8 @@ class AgentOrchestrator:
         # derives its PDF/DOCX/PPTX palette from. Profile-owned identity (Rule 10),
         # threaded to the skill via the context exactly like the allowlist above.
         context.extra["doc_accent"] = profile.doc_theme.accent
-        # …and the name the generated file is signed with — "Sentinel Mark II",
-        # the agent that actually made it and its own iteration, never the
-        # orchestrator that dispatched it.
+        # …and the name the generated file is signed with.
         context.extra["doc_author"] = profile.signed_name
-
-        # House Party Protocol — high-stakes all-hands mode (owner-engaged only).
-        # Speda becomes mission commander; every other agent becomes an operative
-        # that accepts tasks outside its domain. Engaged/stood down via the
-        # house_party tool on the owner's explicit invocation.
-        from app.core.runtime_state import get_house_party
-        if get_house_party():
-            if profile.house_party_commander:
-                stable_core += (
-                    "\n\n## HOUSE PARTY PROTOCOL — ACTIVE\n\n"
-                    "The owner has engaged the all-hands protocol: the situation is "
-                    "high-stakes and the entire agent roster is at your command. You "
-                    "are the MISSION COMMANDER. For the owner's objective:\n"
-                    "1. PLAN first — decompose the objective into concrete workstreams.\n"
-                    "2. DISPATCH in parallel — one tailored dispatch_agent call per "
-                    "agent in the same turn (prefer individually scoped tasks over a "
-                    "broadcast; use agent='all' only when everyone genuinely needs "
-                    "the identical brief). Assign by specialization where it fits, "
-                    "but ANY agent may take ANY task — domain is a preference here, "
-                    "not a rule. Every agent runs at full model grade.\n"
-                    "3. ITERATE — when results return, dispatch follow-up waves until "
-                    "the objective is genuinely done. Do not stop at one round if the "
-                    "mission needs more.\n"
-                    "4. DEBRIEF — synthesize everything into one decisive answer for "
-                    "the owner: what was done, by whom, what it means, what's next.\n\n"
-                    "### This is a GROUP CHAT\n"
-                    "The owner is in the room with the whole roster. Every task you "
-                    "dispatch and every agent's reply is rendered in their transcript "
-                    "as that agent's own message, live, the moment it lands — they "
-                    "read the agents directly, not a summary of them. So:\n"
-                    "- Write each dispatch as a message TO that agent, in plain "
-                    "language the owner can follow. It is a public brief, not an "
-                    "internal payload.\n"
-                    "- Never re-narrate or repeat an agent's answer back to the owner "
-                    "— they already read it. Add only what is yours: the decision, "
-                    "the conflict between two agents, the next move.\n"
-                    "- Keep your own messages short, like someone talking in a group "
-                    "chat. The long-form substance comes from the agents.\n"
-                    "- When the owner addresses an agent directly (\"@centurion …\"), "
-                    "dispatch that request to that agent essentially verbatim and let "
-                    "their answer stand. Do not answer for them.\n\n"
-                    "Stand the protocol down (house_party tool) when the owner says "
-                    "the situation is resolved."
-                )
-            else:
-                stable_core += (
-                    "\n\n## HOUSE PARTY PROTOCOL — ACTIVE\n\n"
-                    "The owner has engaged the all-hands protocol. You are an "
-                    "OPERATIVE on a high-stakes mission: tasks dispatched to you may "
-                    "fall outside your usual domain — take them anyway and deliver "
-                    "your best work; specialization is a preference here, not a "
-                    "boundary. Check the network channel in your briefing so you "
-                    "build on the other agents' results instead of duplicating them.\n"
-                    "You are speaking in a GROUP CHAT: your reply is shown to the "
-                    "owner as your own message, under your own name, next to every "
-                    "other agent's. Write it for them to read — lead with the "
-                    "substance, no preamble, no restating the brief, no sign-off. "
-                    "Short and concrete beats long and thorough here."
-                )
-        elif profile.house_party_commander:
-            # State the OFF state explicitly. Without this line the model had no
-            # grounding to contradict itself, and prod showed it announcing
-            # "House Party Protocol engaged. All six agents standing by" on four
-            # consecutive turns without ever calling the tool — the flag was
-            # false throughout. Costs ~70 tokens on a prefix that only changes
-            # when the flag does (rare), which is cheap for a claim the owner
-            # would otherwise have no way to catch.
-            stable_core += (
-                "\n\n## HOUSE PARTY PROTOCOL — NOT ENGAGED\n\n"
-                "The protocol is currently STOOD DOWN. This is the live state, not a "
-                "default: whatever an earlier message in this conversation says, it is "
-                "off right now. Never tell the owner it is engaged, and never speak as "
-                "though the roster is assembled or standing by, unless THIS prompt says "
-                "ACTIVE. Engaging it is not something you can assert — it happens only "
-                "when you call the `house_party` tool with engaged=true and the owner "
-                "then authorizes it in their app. If they ask you to engage it: call "
-                "that tool (search for it by name if it is not in your tools array), "
-                "report exactly what the tool returned, and if the call was refused say "
-                "so plainly rather than claiming success."
-            )
 
         # Budget mode — hard frugality directive (runtime-toggleable, persistent).
         from app.core.runtime_state import get_budget_mode
@@ -276,7 +194,6 @@ class AgentOrchestrator:
                 "A few sentences or bullets. No multi-section reports, no scenario "
                 "tables, unless the owner explicitly says 'deep dive' / 'full briefing'.\n"
                 "- Run as FEW web searches as possible (ideally 1, at most 2-3).\n"
-                "- The Legion is disabled. Do all work yourself in this turn.\n"
                 "- If a request truly warrants depth, give a short answer first and "
                 "ask whether to expand — never assume."
             )
@@ -426,7 +343,7 @@ class AgentOrchestrator:
             stable_core += (
                 "\n\n## DEAD ZONE PROTOCOL — ACTIVE\n\n"
                 "No uplink. You are running on local compute only. Online "
-                "capabilities (web search, mail, calendar, the Legion) are "
+                "capabilities (web search, mail, calendar) are "
                 "unavailable and have been removed from your tools. Work from "
                 "local knowledge, memory and files; be direct about what cannot "
                 "be done until the link is restored."
@@ -662,44 +579,15 @@ class AgentOrchestrator:
                     )
 
                 # 2. Execute all tools in parallel, each timed individually for
-                #    the tool_calls audit row persisted below. A Legion (`Task`)
-                #    call among them can run for minutes; `emit_queue` lets it
-                #    push live progress out as SUBAGENT events WHILE the batch
-                #    is still in flight, instead of the whole generator sitting
-                #    silent until every tool in the batch has returned.
-                emit_queue: asyncio.Queue = asyncio.Queue()
-                exec_tasks = [
+                #    the tool_calls audit row persisted below.
+                gather_fut = asyncio.gather(*[
                     asyncio.create_task(_timed(
                         block.name, block.input, context, self._registry,
-                        tool_call_id=block.id, emit=emit_queue.put_nowait,
+                        tool_call_id=block.id,
                     ))
                     for block in tool_use_blocks
-                ]
-                gather_fut = asyncio.gather(*exec_tasks)
-                while not gather_fut.done():
-                    get_fut = asyncio.ensure_future(emit_queue.get())
-                    done, _pending = await asyncio.wait(
-                        {gather_fut, get_fut}, return_when=asyncio.FIRST_COMPLETED
-                    )
-                    if get_fut in done:
-                        yield SSEEvent(
-                            type=SSEEventType.SUBAGENT,
-                            data=get_fut.result(),
-                            session_id=context.session_id,
-                            request_id=context.request_id,
-                        )
-                    else:
-                        get_fut.cancel()
-                # Drain anything a legionnaire pushed after the batch settled
-                # but before this loop got a chance to pick it up (e.g. its
-                # own "finished" event, emitted right as it returns).
-                while not emit_queue.empty():
-                    yield SSEEvent(
-                        type=SSEEventType.SUBAGENT,
-                        data=emit_queue.get_nowait(),
-                        session_id=context.session_id,
-                        request_id=context.request_id,
-                    )
+                ])
+                await gather_fut
                 timed_results = gather_fut.result()
                 results = [r for r, _ in timed_results]
 
@@ -740,43 +628,6 @@ class AgentOrchestrator:
                             extra={"request_id": context.request_id, "error": str(exc)},
                         )
                         await context.db.rollback()
-
-                # 2c. The house_party tool asks the owner to authorize by opening
-                #     the app's own passphrase window. Emit it the moment the tool
-                #     returns (not at end-of-turn like `file`) so the window is up
-                #     while the model is still writing its one-line heads-up.
-                auth_ask = context.extra.pop("house_party_auth", None)
-                if auth_ask is not None:
-                    yield SSEEvent(
-                        type=SSEEventType.HOUSE_PARTY_AUTH,
-                        data=auth_ask,
-                        session_id=context.session_id,
-                        request_id=context.request_id,
-                    )
-
-                # 2d. Same for the Lockdown Protocol's containment authorization.
-                lock_ask = context.extra.pop("lockdown_auth", None)
-                if lock_ask is not None:
-                    yield SSEEvent(
-                        type=SSEEventType.LOCKDOWN_AUTH,
-                        data=lock_ask,
-                        session_id=context.session_id,
-                        request_id=context.request_id,
-                    )
-
-                # 2e. Skyfall arming. Unlike the two above this is not an
-                # authorization request — the owner has already said which
-                # project. It opens the countdown, and the countdown is what
-                # decides: let it run and the endpoint fires, abort and nothing
-                # was ever sent. The agent's part ends here.
-                arm = context.extra.pop("skyfall_arm", None)
-                if arm is not None:
-                    yield SSEEvent(
-                        type=SSEEventType.SKYFALL_ARM,
-                        data=arm,
-                        session_id=context.session_id,
-                        request_id=context.request_id,
-                    )
 
                 # 3. Zip the results back to their respective tool blocks
                 tool_results = [

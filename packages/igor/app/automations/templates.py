@@ -18,7 +18,7 @@ validating or composing it. A Hook's `describe()`/`display()` half is
 `build_intent()` path, no template-specific validation for either. They are
 two picker cards rather than one because they answer different owner
 questions: "summarize/gather something for me" (briefing) vs. "go DO this
-thing and tell me what happened" (task, e.g. "run the Octavius backup every
+thing and tell me what happened" (task, e.g. "run the weekly cleanup every
 week and report the details"). Splitting the label from the mechanics here —
 rather than inventing a second code path — keeps that distinction where it
 actually lives: in what the owner is picturing when he creates one, not in

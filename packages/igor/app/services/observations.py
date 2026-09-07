@@ -54,8 +54,8 @@ DOMAINS: tuple[str, ...] = (
     "preference",  # what the owner likes, dislikes, wants, and in what manner
     "state",       # something true of the owner's life right now
     "project",     # a project's status or progress
-    "training",    # a gym session or training fact (Atomix's domain)
-    "finance",     # an account, figure, budget or holding (Sentinel's domain)
+    "training",    # a gym session or training fact (the health desk's domain)
+    "finance",     # an account, figure, budget or holding (the agent's domain)
     "event",       # a dated thing that happened, usually to another person
 )
 

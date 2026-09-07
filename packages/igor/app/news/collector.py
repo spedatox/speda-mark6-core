@@ -6,7 +6,7 @@ Tier-1 RSS collector — the always-on watcher (no LLM inside).
 
 `poll_all()` is what the n8n clock calls via POST /news/poll: fetch every
 enabled feed concurrently, parse, dedup, store new headlines, match them against
-the keyword watchlist, and escalate hits to a NightCrawler push turn (cooldowned).
+the keyword watchlist, and escalate hits to a push turn (cooldowned).
 It is pure Python + DB — cheap enough to run every few minutes with no quota
 anxiety. Per-feed failures are isolated: one dead outlet never fails the poll.
 
@@ -179,7 +179,7 @@ def _add_also_in(row: NewsItem, outlet: str) -> None:
 
 
 async def _maybe_escalate(db, app, watch: NewsWatch, item: NewsItem) -> None:
-    """Fire a NightCrawler flash for a keyword hit, honouring the per-keyword
+    """Fire a news flash for a keyword hit, honouring the per-keyword
     cooldown so a developing story doesn't spam the owner."""
     now = datetime.now(timezone.utc)
     cooldown = timedelta(minutes=settings.news_flash_cooldown_min)

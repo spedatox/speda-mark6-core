@@ -6,7 +6,7 @@ import type { CSSProperties } from 'react'
 /**
  * Skeleton — the deck's placeholder-content primitive. A glass bar cut to the
  * shape of the text/row/tile that's arriving, with a shimmer sweep (`.hb-skeleton`
- * in heartbreaker.css), so a settings tab, a session list, or a switched agent's
+ * in striker.css), so a settings tab or a session list
  * history reads as "this is arriving" instead of a blank pane, a misleading
  * empty-state string, or a bare "Loading…". Use this — not a spinner or plain
  * text — anywhere a component waits on a fetch before it has real content.
@@ -49,7 +49,7 @@ export function SkeletonText({ lines = 2, lastWidth = '62%', gap = 8, lineHeight
 }
 
 /** One list row — an optional mark (icon/avatar tile) plus a title + subtitle
- *  pair. Matches the shape of a session row, a connection row, a roster entry. */
+ *  pair. Matches the shape of a session row or a connection row. */
 export function SkeletonRow({ mark = true, subtitle = true, markSize = 32 }: {
   mark?: boolean
   subtitle?: boolean
@@ -67,7 +67,7 @@ export function SkeletonRow({ mark = true, subtitle = true, markSize = 32 }: {
 }
 
 /** A stack of `SkeletonRow`s, staggered slightly so they don't pulse in
- *  lockstep — a whole loading list (sessions, connections, roster) in one call. */
+ *  lockstep — a whole loading list (sessions, connections) in one call. */
 export function SkeletonList({ rows = 4, mark = true, subtitle = true, markSize = 32 }: {
   rows?: number
   mark?: boolean

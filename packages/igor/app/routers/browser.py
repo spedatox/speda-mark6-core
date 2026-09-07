@@ -56,7 +56,7 @@ async def list_portals(request: Request):
         # anything else would be this file guessing on the portal's behalf.
         row["session"] = record.get("name") in live
         rows.append(row)
-    agents = [p.agent_id for p in request.app.state.profiles.roster() if p.dispatch_target]
+    agents = [p.agent_id for p in request.app.state.profiles.roster()]
     return {"portals": rows, "browser": status, "agents": agents}
 
 

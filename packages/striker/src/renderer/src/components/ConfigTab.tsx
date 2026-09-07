@@ -405,7 +405,7 @@ function SourceOfTruthPanel({ config }: { config: AppConfig }) {
         </span>
         <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.4 }}>
           The one <code style={{ fontFamily: MONO }}>/memories</code> file each agent reads its domain data from and writes every update back to.
-          Sentinel → finance, Atomix → sessions. Pick any existing memory file.
+          Pick any existing memory file.
         </span>
       </div>
       <div style={{ padding: '0.4rem 0.85rem 0.85rem', display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>

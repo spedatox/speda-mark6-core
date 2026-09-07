@@ -76,7 +76,7 @@ File an observed preference into the dossier (attributed + dated):
 ```json
 { "command": "str_replace", "path": "/memories/dossier.md",
   "old_str": "## Dislikes / friction",
-  "new_str": "## Dislikes / friction\n- [2026-07-06, sentinel] dislikes padding before the answer" }
+  "new_str": "## Dislikes / friction\n- [2026-07-06, speda] dislikes padding before the answer" }
 ```
 
 ## Rules

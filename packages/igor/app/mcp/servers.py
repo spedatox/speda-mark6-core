@@ -13,12 +13,12 @@ Startup registration order (Entry 005 priority):
   2. Google Workspace — Gmail + Calendar
   3. Brave Search    — web search fallback
   4. Fetch           — web content → Markdown
-  5. Alpha Vantage   — Sentinel financial data
-  6. Tavily          — NightCrawler primary search
-  7. Exa             — NightCrawler + Ultron research
-  8. GitHub          — Optimus + Ultron engineering
-  9. Filesystem      — Optimus local file ops
-  10. arXiv          — Ultron + NightCrawler academic
+  5. Alpha Vantage   — financial data
+  6. Tavily          — primary web search
+  7. Exa             — research-grade search
+  8. GitHub          — repository, issue and code operations
+  9. Filesystem      — local file ops
+  10. arXiv          — academic paper search
   11. CVE Intelligence — Unicron security intelligence
   12. Playwright     — open-public-web browser automation, full upstream tool
                        parity (MUST run in isolated container; never for the

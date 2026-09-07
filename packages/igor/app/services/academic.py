@@ -217,7 +217,7 @@ async def list_attendance(db: AsyncSession) -> list[AttendanceEntry]:
 # ── The verdict ─────────────────────────────────────────────────────────────
 
 async def summarise(db: AsyncSession, now: datetime | None = None) -> list[dict]:
-    """Per-subject attendance verdicts. The single source Ultron quotes from."""
+    """Per-subject attendance verdicts. The single source the academic desk quotes from."""
     now = now or datetime.utcnow()
     term = await get_active_term(db)
     if term is None:

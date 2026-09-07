@@ -122,9 +122,6 @@ CONFIG_GROUPS: list[ConfigGroup] = [
                         help="Override the model for n8n/agent/background tasks."),
             ConfigField("llm_fallback_chain", "Fallback Chain", "text", requires_restart=_LIVE,
                         help="Comma-separated provider:model refs tried when the primary fails."),
-            ConfigField("legion_model_override", "Legion Worker Model Override", "text", requires_restart=_LIVE,
-                        help="Pin all Legion workers to one 'provider:model'. Empty = automatic: "
-                             "cheap same-provider model for low/medium-effort workers, parent model for high."),
         ],
     ),
     ConfigGroup(
@@ -132,7 +129,7 @@ CONFIG_GROUPS: list[ConfigGroup] = [
         "Spend controls, offline mode, conversation compaction, and prompt caching.",
         [
             ConfigField("budget_mode", "Budget Mode", "bool", requires_restart=_LIVE,
-                        help="Hard frugality: the Legion disabled + concise output. (Runtime toggle.)"),
+                        help="Hard frugality: shorter answers, fewer searches. (Runtime toggle.)"),
             ConfigField("dead_zone_mode", "Dead Zone Mode", "select", requires_restart=_LIVE,
                         options=["auto", "on", "off"],
                         help="Offline operation. auto probes connectivity; on forces local-only."),
@@ -167,13 +164,6 @@ CONFIG_GROUPS: list[ConfigGroup] = [
             ConfigField("telegram_bot_token", "Speda Bot Token (legacy alias)", "password", secret=True,
                         help="From @BotFather. Used for Speda if the per-agent token is unset."),
             ConfigField("telegram_bot_token_speda", "Speda Bot Token", "password", secret=True),
-            ConfigField("telegram_bot_token_sentinel", "Sentinel Bot Token", "password", secret=True),
-            ConfigField("telegram_bot_token_nightcrawler", "NightCrawler Bot Token", "password", secret=True),
-            ConfigField("telegram_bot_token_ultron", "Ultron Bot Token", "password", secret=True),
-            ConfigField("telegram_bot_token_centurion", "Centurion Bot Token", "password", secret=True),
-            ConfigField("telegram_bot_token_atomix", "Atomix Bot Token", "password", secret=True),
-            ConfigField("telegram_bot_token_orion", "Orion Bot Token", "password", secret=True),
-            ConfigField("telegram_bot_token_optimus", "Optimus Bot Token", "password", secret=True),
         ],
     ),
     ConfigGroup(
@@ -385,7 +375,7 @@ CONFIG_GROUPS: list[ConfigGroup] = [
     ),
     ConfigGroup(
         "osint", "OSINT / Threat Intelligence",
-        "Optional keys for NightCrawler/Centurion. Most tools also run keyless.",
+        "Optional keys for the OSINT desk. Most tools also run keyless.",
         [
             ConfigField("abuseipdb_api_key", "AbuseIPDB Key", "password", secret=True),
             ConfigField("abuse_ch_api_key", "abuse.ch Auth-Key", "password", secret=True),
@@ -406,7 +396,7 @@ CONFIG_GROUPS: list[ConfigGroup] = [
     ),
     ConfigGroup(
         "system", "System & Ops",
-        "Sandbox, OSS adapters, temp outputs, and Orion's privileged host operations.",
+        "Sandbox, OSS adapters, and temp outputs.",
         [
             ConfigField("owner_timezone", "Owner Timezone", "text", requires_restart=_LIVE,
                         help="IANA name the app presents time in (server stays UTC). "
@@ -443,19 +433,6 @@ CONFIG_GROUPS: list[ConfigGroup] = [
             ConfigField("shannon_url", "Shannon URL", "url"),
             ConfigField("temp_outputs_dir", "Temp Outputs Dir", "text",
                         help="Where generated files land (24h n8n cleanup)."),
-            ConfigField("system_ops_enabled", "Host Ops (Orion/Optimus)", "bool",
-                        help="Privileged host operations for Orion & Optimus. Off by default."),
-            ConfigField("system_ops_root", "Host Ops Write Jail", "text",
-                        help="Confines any system_ops file write to this subtree."),
-            ConfigField("system_ops_timeout", "Host Ops Timeout (s)", "int"),
-            ConfigField("system_ops_host", "Host Ops SSH Target", "text", requires_restart=_LIVE,
-                        help="user@host the containerized backend SSHes to for REAL host "
-                             "maintenance, e.g. root@host.docker.internal. Empty = run locally.",
-                        placeholder="root@host.docker.internal"),
-            ConfigField("system_ops_ssh_port", "Host Ops SSH Port", "int", requires_restart=_LIVE,
-                        help="The host's sshd port."),
-            ConfigField("system_ops_ssh_key", "Host Ops SSH Key Path", "text", requires_restart=_LIVE,
-                        help="Private key path inside the container (default: data dir/host_ops_key)."),
         ],
     ),
     ConfigGroup(
@@ -576,8 +553,6 @@ CONFIG_GROUPS: list[ConfigGroup] = [
         [
             ConfigField("speda_api_key", "Service API Key (X-API-Key)", "password", secret=True,
                         help="Validated on every request. The desktop app must match it."),
-            ConfigField("house_party_passphrase", "House Party Passphrase", "password", secret=True,
-                        help="Owner passphrase to engage the all-hands protocol."),
             ConfigField("cors_allowed_origins", "CORS Allowed Origins", "text",
                         help="Extra comma-separated browser origins. The desktop app is always allowed."),
             ConfigField("log_level", "Log Level", "select", requires_restart=_LIVE,
