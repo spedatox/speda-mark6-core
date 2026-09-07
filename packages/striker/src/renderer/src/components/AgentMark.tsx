@@ -67,7 +67,7 @@ export default function AgentMark({
       <svg viewBox="0 0 100 100" width={size} height={size} fill="currentColor"
            className={className} style={style} {...a11y}>
         {title && <title>{title}</title>}
-        <path d={d} fillRule={fillRule} />
+        <path d={d} />
       </svg>
     )
   }
@@ -88,7 +88,7 @@ export default function AgentMark({
          className={className} style={style} {...a11y}>
       {title && <title>{title}</title>}
       <defs>
-        <clipPath id={`${uid}-clip`}><path d={d} fillRule={fillRule} /></clipPath>
+        <clipPath id={`${uid}-clip`}><path d={d} /></clipPath>
         <linearGradient id={`${uid}-sheen`} x1="0.08" y1="0" x2="0.62" y2="1">
           <stop offset="0" stopColor="#fff" stopOpacity={0.62} />
           <stop offset="0.42" stopColor="#fff" stopOpacity={0.1} />
