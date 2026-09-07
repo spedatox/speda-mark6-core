@@ -1,0 +1,130 @@
+# Paths the full build owns and Core does not.
+#
+# Read by spedatox/speda-mark6's sync-to-core workflow. Every commit carried from
+# the full build has these paths stripped out of it before it is committed here,
+# so a change that only touches them lands as an empty carry and is skipped.
+#
+# It lives HERE, not in the full build, because Core owns the definition of what
+# Core excludes. The fork decided what to delete; this file is that decision
+# written down where the next person to widen or narrow it will look.
+#
+# Format: one gitignore-style pathspec per line. Blank lines and # comments are
+# ignored. Directories may be given with or without a trailing slash.
+#
+# Adding to this list is how you keep something out of Core forever. If you find
+# yourself deleting the same file from every sync PR by hand, it belongs here.
+
+# ── Clients Core does not ship ───────────────────────────────────────────────
+# Core's desktop client is packages/striker. Heartbreaker (the roster build) and
+# Speda GO (Android) have no counterpart here.
+packages/heartbreaker
+packages/speda-go
+
+# ── Marketing site, logo set and release tooling for the full build ──────────
+site
+logos
+scripts
+.github/workflows/heartbreaker.yml
+.github/workflows/pages.yml
+.github/workflows/speda-go.yml
+.github/workflows/sync-to-core.yml
+build-app.ps1
+lifeboat.sh
+caddy-sites
+forge.png
+
+# ── The multi-agent engine ───────────────────────────────────────────────────
+# The roster, the worker corps, and the machinery for talking to either. This is
+# the block that makes an automatic merge unsafe, and the reason the sync opens a
+# PR instead of pushing: a change that reaches past these paths into shared code
+# still needs a person to decide what it means for a build with one agent.
+packages/igor/app/legion
+packages/igor/app/websocket
+packages/igor/app/core/agent_registry.py
+packages/igor/app/core/dispatch.py
+packages/igor/app/core/external_chat.py
+packages/igor/app/core/external_proxy.py
+packages/igor/app/core/peer_routing.py
+packages/igor/app/models/agent.py
+packages/igor/app/models/agent_message.py
+packages/igor/app/routers/legion.py
+packages/igor/app/skills/dispatch.py
+packages/igor/app/skills/legion.py
+packages/igor/app/services/forge_peer.py
+packages/igor/app/services/peer_memory.py
+packages/igor/app/services/pending_asks.py
+packages/igor/app/services/host_bridge.py
+
+# Every agent profile except Speda's, and their prompt fragments.
+packages/igor/app/profiles/atomix.py
+packages/igor/app/profiles/centurion.py
+packages/igor/app/profiles/nightcrawler.py
+packages/igor/app/profiles/optimus.py
+packages/igor/app/profiles/orion.py
+packages/igor/app/profiles/sentinel.py
+packages/igor/app/profiles/ultron.py
+packages/igor/app/profiles/warroom.py
+packages/igor/app/prompts/agents/atomix
+packages/igor/app/prompts/agents/centurion
+packages/igor/app/prompts/agents/nightcrawler
+packages/igor/app/prompts/agents/optimus
+packages/igor/app/prompts/agents/orion
+packages/igor/app/prompts/agents/sentinel
+packages/igor/app/prompts/agents/ultron
+
+# ── Named deployment protocols ───────────────────────────────────────────────
+# Skyfall, Octavius, Doormat, Lockdown, Lifeboat, and the Hisar vault bridge.
+packages/igor/app/routers/doormat.py
+packages/igor/app/routers/hisar.py
+packages/igor/app/routers/lifeboat.py
+packages/igor/app/routers/octavius.py
+packages/igor/app/routers/skyfall.py
+packages/igor/app/schemas/doormat.py
+packages/igor/app/schemas/lifeboat.py
+packages/igor/app/schemas/octavius.py
+packages/igor/app/schemas/skyfall.py
+packages/igor/app/services/doormat.py
+packages/igor/app/services/lifeboat.py
+packages/igor/app/services/lockdown.py
+packages/igor/app/services/octavius.py
+packages/igor/app/services/skyfall.py
+packages/igor/app/skills/doormat.py
+packages/igor/app/skills/forge_sync.py
+packages/igor/app/skills/hisar.py
+packages/igor/app/skills/legion.py
+packages/igor/app/skills/lifeboat.py
+packages/igor/app/skills/lockdown.py
+packages/igor/app/skills/octavius.py
+packages/igor/app/skills/skyfall.py
+packages/igor/app/skills/system_ops.py
+
+# ── Tests for all of the above ───────────────────────────────────────────────
+packages/igor/tests/test_chat_steer_route.py
+packages/igor/tests/test_dispatch_progress.py
+packages/igor/tests/test_dispatch_push_to_peers.py
+packages/igor/tests/test_dispatch_self.py
+packages/igor/tests/test_dispatch_session.py
+packages/igor/tests/test_doormat.py
+packages/igor/tests/test_external_proxy.py
+packages/igor/tests/test_forge_sync.py
+packages/igor/tests/test_hisar_skill.py
+packages/igor/tests/test_house_party.py
+packages/igor/tests/test_legion.py
+packages/igor/tests/test_lifeboat.py
+packages/igor/tests/test_lockdown.py
+packages/igor/tests/test_octavius.py
+packages/igor/tests/test_peer_cwd.py
+packages/igor/tests/test_peer_memory.py
+packages/igor/tests/test_peer_memory_channel.py
+packages/igor/tests/test_pending_asks.py
+packages/igor/tests/test_skyfall.py
+packages/igor/tests/test_system_ops_restart.py
+
+# ── Docs that describe the full build ────────────────────────────────────────
+# Core's README, CLAUDE.md and package docs are its own; the full build's copies
+# describe a roster that does not exist here and must never overwrite them.
+README.md
+CLAUDE.md
+docs
+packages/igor/IGOR.md
+packages/striker/STRIKER.md

@@ -1,0 +1,9 @@
+# Last commit of spedatox/speda-mark6 that has been carried into this repo.
+#
+# Written by the sync-to-core workflow in the full build. Everything after this
+# SHA on the full build's main is what the next sync PR will contain, so moving
+# it by hand is how you tell the sync to skip a commit (or to re-carry one).
+#
+# 629076f is the point this file was introduced: the projects feature and the
+# logging fix, both already carried here by hand as acf8089..086333b.
+629076f
