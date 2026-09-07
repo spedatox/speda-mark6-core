@@ -28,6 +28,7 @@ scripts
 .github/workflows/pages.yml
 .github/workflows/speda-go.yml
 .github/workflows/sync-to-core.yml
+.github/sync
 build-app.ps1
 lifeboat.sh
 caddy-sites
