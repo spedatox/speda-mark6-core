@@ -30,11 +30,17 @@ TITLE="sync: carry ${CARRIED} commit(s) from the full build"
 if [ -n "$BLOCKED" ]; then TITLE="${TITLE} (blocked carry)"; fi
 # Do not swallow authentication/API errors and then attempt a duplicate PR.
 EXISTING="$(gh pr list --repo "$CORE_REPO" --head "$SYNC_BRANCH" --base main \
-  --state open --json number --jq '.[0].number // empty')"
-if [ -n "$EXISTING" ]; then
-  gh pr edit "$EXISTING" --repo "$CORE_REPO" --title "$TITLE" --body-file "$BODY"
-  if [ -n "$BLOCKED" ]; then gh pr ready "$EXISTING" --repo "$CORE_REPO" --undo; fi
-  URL="https://github.com/$CORE_REPO/pull/$EXISTING"
+  --state open --json number,isDraft --jq '.[0] // {}')"
+NUMBER="$(printf '%s' "$EXISTING" | jq -r '.number // empty')"
+IS_DRAFT="$(printf '%s' "$EXISTING" | jq -r '.isDraft // false')"
+if [ -n "$NUMBER" ]; then
+  gh pr edit "$NUMBER" --repo "$CORE_REPO" --title "$TITLE" --body-file "$BODY"
+  if [ -n "$BLOCKED" ] && [ "$IS_DRAFT" != "true" ]; then
+    gh pr ready "$NUMBER" --repo "$CORE_REPO" --undo
+  elif [ -z "$BLOCKED" ] && [ "$IS_DRAFT" = "true" ]; then
+    gh pr ready "$NUMBER" --repo "$CORE_REPO"
+  fi
+  URL="https://github.com/$CORE_REPO/pull/$NUMBER"
 else
   OPTIONS=()
   if [ -n "$BLOCKED" ]; then OPTIONS+=(--draft); fi
