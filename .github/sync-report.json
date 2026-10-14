@@ -1,0 +1,9 @@
+{
+  "full_repo": "spedatox/speda-mark6",
+  "since": "629076f3d072355be84411838e0bf2d7097e64a7",
+  "last_ok": "075d394e66c63643d83141b9a7007779fb586d28",
+  "carried": 1,
+  "skipped": 2,
+  "blocked": "8f5d226f1c4d81d45cfac8a49c3c20a6abbf4cf2",
+  "blocked_subject": "Run Forge as a Legion execution backend"
+}
