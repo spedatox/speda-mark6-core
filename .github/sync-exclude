@@ -129,3 +129,26 @@ CLAUDE.md
 docs
 packages/igor/IGOR.md
 packages/striker/STRIKER.md
+
+# Full-build automation and operator instructions must never overwrite Core's.
+.github
+AGENTS.md
+.claude
+
+# New full-build worker and host components introduced after the original split.
+packages/forge
+packages/orion-spark
+packages/igor/app/profiles/scourge.py
+packages/igor/app/prompts/agents/scourge
+packages/igor/app/prompts/agents/warroom
+packages/igor/app/skills/workshop.py
+packages/igor/app/services/workspaces.py
+packages/igor/app/services/hisar_workspaces.py
+packages/igor/app/services/engineering_inputs.py
+packages/igor/app/services/worker_control.py
+packages/igor/app/services/completion_recovery.py
+packages/igor/app/services/sandbox_launcher.py
+packages/igor/app/models/worker_execution.py
+packages/igor/app/models/engineering_input.py
+packages/igor/app/services/octavius_restore.py
+packages/igor/app/services/octavius_restore_host.py

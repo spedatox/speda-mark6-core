@@ -17,15 +17,16 @@ That has a consequence worth stating plainly, because it is the mistake this rep
 The sync is automated up to the point where judgement starts, and no further.
 Every push to the full build's `main` runs its `sync-to-core` workflow, which
 replays the new commits onto a branch here, strips the paths listed in
-[`.github/sync-exclude`](.github/sync-exclude), and opens a **pull request**. It
+[`.github/sync-exclude`](.github/sync-exclude), and pushes with a dedicated Core-only deploy key. Core's `receive-core-sync` workflow
+opens a **pull request** with its own GitHub token. The sync
 never pushes to `main` and never merges.
 
 That gate is the whole design. The strip is mechanical — it can remove
 `packages/heartbreaker`, it cannot tell you whether a change to the shared chat
 surface still means anything in a build with one agent. So read the carry PR for
 exactly that: anything assuming a roster, a dispatch, a worker corps or a peer
-belongs in the full build, not here. Close the PR rather than merging it if the
-answer is no; `.github/sync-state` will have moved past those commits either way.
+belongs in the full build, not here. Closing a PR does not advance `.github/sync-state` on main. A reviewed skip must
+be recorded explicitly, or the same commit will remain pending.
 
 Two files drive it, and both live here because Core owns the definition of what
 Core excludes:
@@ -34,6 +35,9 @@ Core excludes:
 |---|---|
 | [`.github/sync-exclude`](.github/sync-exclude) | The strip list. If you delete the same file out of every carry PR by hand, put it here. |
 | [`.github/sync-state`](.github/sync-state) | How far the carry has reached. Move it by hand to skip a commit or to re-carry one. |
+
+Missing credentials fail the source workflow. A conflict produces a draft PR and
+fails both workflows visibly; it is never reported as a successful sync.
 
 A commit that conflicts stops the replay: the PR carries everything before it and
 names the one that needs hand-carrying. That commit is still a deliberate act of

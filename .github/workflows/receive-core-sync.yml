@@ -1,0 +1,38 @@
+name: receive-core-sync
+
+# The full build pushes with a Core-only deploy key. PR creation runs here with
+# Core's own short-lived token; no account-wide PAT is stored in either repo.
+on:
+  push:
+    branches: [sync/from-full-build]
+  workflow_dispatch: {}
+concurrency:
+  group: receive-core-sync
+  cancel-in-progress: false
+permissions:
+  contents: read
+  pull-requests: write
+env:
+  CORE_REPO: ${{ github.repository }}
+  SYNC_BRANCH: sync/from-full-build
+jobs:
+  pull-request:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Execute only main's PR tooling, never carried backend code.
+      - name: Check out trusted PR tooling
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Read the current carry report
+        env:
+          REPORT_FILE: ${{ runner.temp }}/core-sync-report.json
+        run: |
+          git fetch --no-tags origin "$SYNC_BRANCH"
+          git show FETCH_HEAD:.github/sync-report.json > "$REPORT_FILE"
+      - name: Open or update the carry PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPORT_FILE: ${{ runner.temp }}/core-sync-report.json
+        run: bash .github/sync/open-pr.sh
